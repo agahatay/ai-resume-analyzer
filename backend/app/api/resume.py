@@ -1,12 +1,14 @@
 from fastapi import APIRouter, HTTPException, UploadFile, status
 
 from app.core.config import get_settings
+from app.schemas.match import ResumeMatchRequest, ResumeMatchResponse
 from app.schemas.resume import ParsedResume, ResumeParseRequest, ResumeUploadResponse
 from app.services.pdf_service import (
     EmptyPDFTextError,
     InvalidPDFError,
     extract_text_from_pdf,
 )
+from app.services.resume_matcher import match_resume_to_job
 from app.services.resume_parser import parse_resume
 
 router = APIRouter(prefix="/resume", tags=["resume"])
@@ -71,4 +73,15 @@ async def parse_resume_endpoint(payload: ResumeParseRequest) -> ParsedResume:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to parse resume text.",
+        ) from exc
+
+
+@router.post("/match", response_model=ResumeMatchResponse)
+async def match_resume_endpoint(payload: ResumeMatchRequest) -> ResumeMatchResponse:
+    try:
+        return match_resume_to_job(payload.resume, payload.job_description)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to match resume against job description.",
         ) from exc

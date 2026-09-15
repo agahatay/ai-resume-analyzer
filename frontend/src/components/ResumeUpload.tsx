@@ -7,7 +7,11 @@ import ParsedResumeView from "./ParsedResumeView";
 type UploadState = "idle" | "loading" | "success" | "error";
 type ParseState = "idle" | "loading" | "success" | "error";
 
-function ResumeUpload() {
+interface ResumeUploadProps {
+  onParsed?: (resume: ParsedResume | null) => void;
+}
+
+function ResumeUpload({ onParsed }: ResumeUploadProps) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [state, setState] = useState<UploadState>("idle");
   const [extractedText, setExtractedText] = useState<string>("");
@@ -26,6 +30,7 @@ function ResumeUpload() {
     setParseState("idle");
     setParsedResume(null);
     setParseErrorMessage("");
+    onParsed?.(null);
   }
 
   async function handleUpload() {
@@ -38,6 +43,7 @@ function ResumeUpload() {
     setParseState("idle");
     setParsedResume(null);
     setParseErrorMessage("");
+    onParsed?.(null);
 
     try {
       const result = await uploadResume(selectedFile);
@@ -53,11 +59,13 @@ function ResumeUpload() {
   async function handleParse() {
     setParseState("loading");
     setParseErrorMessage("");
+    onParsed?.(null);
 
     try {
       const result = await parseResume(extractedText);
       setParsedResume(result);
       setParseState("success");
+      onParsed?.(result);
     } catch (error) {
       setParseErrorMessage(error instanceof Error ? error.message : "Parsing failed.");
       setParseState("error");

@@ -6,7 +6,11 @@ import ParsedJobDescriptionView from "./ParsedJobDescriptionView";
 
 type AnalyzeState = "idle" | "loading" | "success" | "error";
 
-function JobDescriptionInput() {
+interface JobDescriptionInputProps {
+  onParsed?: (jobDescription: ParsedJobDescription | null) => void;
+}
+
+function JobDescriptionInput({ onParsed }: JobDescriptionInputProps) {
   const [text, setText] = useState<string>("");
   const [state, setState] = useState<AnalyzeState>("idle");
   const [parsedJobDescription, setParsedJobDescription] = useState<ParsedJobDescription | null>(
@@ -16,16 +20,20 @@ function JobDescriptionInput() {
 
   function handleTextChange(event: ChangeEvent<HTMLTextAreaElement>) {
     setText(event.target.value);
+    setParsedJobDescription(null);
+    onParsed?.(null);
   }
 
   async function handleAnalyze() {
     setState("loading");
     setErrorMessage("");
+    onParsed?.(null);
 
     try {
       const result = await parseJobDescription(text);
       setParsedJobDescription(result);
       setState("success");
+      onParsed?.(result);
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "Analysis failed.");
       setState("error");
