@@ -74,7 +74,40 @@ class LanguageMatchResult(BaseModel):
     missing: list[str] = Field(default_factory=list)
 
 
+class DeterministicMatchSummary(BaseModel):
+    """A named view of the Phase 5 deterministic result. Same values as the
+    equivalent top-level fields below (kept for backward compatibility) —
+    provided so a caller can read `deterministic_match.score` instead of the
+    flat fields if it prefers a structured shape."""
+
+    score: float
+    matched_skills: list[str] = Field(default_factory=list)
+    missing_required_skills: list[str] = Field(default_factory=list)
+    matched_preferred_skills: list[str] = Field(default_factory=list)
+    missing_preferred_skills: list[str] = Field(default_factory=list)
+    education_match: EducationMatchResult
+    experience_match: ExperienceMatchResult
+    certification_match: CertificationMatchResult
+    language_match: LanguageMatchResult
+
+
+class SemanticMatchItem(BaseModel):
+    category: Literal["skills", "experience", "projects", "education", "certifications"]
+    requirement: str
+    matched_resume_text: str | None = None
+    similarity: float
+    matched: bool
+
+
+class SemanticMatchResult(BaseModel):
+    semantic_score: float
+    semantic_matches: list[SemanticMatchItem] = Field(default_factory=list)
+    model_name: str
+    similarity_threshold: float
+
+
 class ResumeMatchResponse(BaseModel):
+    # --- Phase 5 deterministic fields (unchanged; kept flat for backward compatibility) ---
     overall_match_score: float
     matched_skills: list[str] = Field(default_factory=list)
     missing_required_skills: list[str] = Field(default_factory=list)
@@ -85,3 +118,11 @@ class ResumeMatchResponse(BaseModel):
     certification_match: CertificationMatchResult
     language_match: LanguageMatchResult
     summary: str
+
+    # --- Phase 6 additions ---
+    deterministic_match: DeterministicMatchSummary
+    semantic_match: SemanticMatchResult
+    combined_match_score: float
+    combined_score_formula: str = (
+        "combined_match_score = 0.7 * deterministic_match.score + 0.3 * semantic_match.semantic_score"
+    )

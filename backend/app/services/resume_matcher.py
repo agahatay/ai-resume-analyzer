@@ -18,6 +18,7 @@ from datetime import date
 from app.schemas.job_description import ParsedJobDescription
 from app.schemas.match import (
     CertificationMatchResult,
+    DeterministicMatchSummary,
     EducationMatchResult,
     ExperienceMatchResult,
     LanguageMatchResult,
@@ -25,6 +26,15 @@ from app.schemas.match import (
 )
 from app.schemas.resume import EducationEntry, ExperienceEntry, ParsedResume
 from app.services.job_description_parser import LANGUAGE_NAMES
+from app.services.semantic_matcher import compute_semantic_match
+
+# Phase 6: how the deterministic (Phase 5) and semantic scores are combined.
+# Required per spec: deterministic outweighs semantic 70/30, since the
+# deterministic score is fully explainable while the semantic score is a
+# similarity estimate. Must sum to 1.0.
+DETERMINISTIC_WEIGHT = 0.7
+SEMANTIC_WEIGHT = 0.3
+assert abs(DETERMINISTIC_WEIGHT + SEMANTIC_WEIGHT - 1.0) < 1e-9
 
 # Explicit, reproducible weighting of each matching dimension. Required
 # skills outweigh preferred skills, per the matching spec. Must sum to 1.0.
@@ -360,6 +370,26 @@ def match_resume_to_job(resume: ParsedResume, job_description: ParsedJobDescript
         overall_score,
     )
 
+    # Phase 6: additional semantic similarity layer. Purely additive — none
+    # of the deterministic computation above is affected by this call or its
+    # result.
+    semantic_match = compute_semantic_match(resume, job_description)
+    combined_match_score = round(
+        DETERMINISTIC_WEIGHT * overall_score + SEMANTIC_WEIGHT * semantic_match.semantic_score, 1
+    )
+
+    deterministic_match = DeterministicMatchSummary(
+        score=overall_score,
+        matched_skills=matched_skills,
+        missing_required_skills=missing_required_skills,
+        matched_preferred_skills=matched_preferred_skills,
+        missing_preferred_skills=missing_preferred_skills,
+        education_match=education_match,
+        experience_match=experience_match,
+        certification_match=certification_match,
+        language_match=language_match,
+    )
+
     return ResumeMatchResponse(
         overall_match_score=overall_score,
         matched_skills=matched_skills,
@@ -371,4 +401,7 @@ def match_resume_to_job(resume: ParsedResume, job_description: ParsedJobDescript
         certification_match=certification_match,
         language_match=language_match,
         summary=summary,
+        deterministic_match=deterministic_match,
+        semantic_match=semantic_match,
+        combined_match_score=combined_match_score,
     )
