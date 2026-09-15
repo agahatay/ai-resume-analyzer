@@ -7,6 +7,7 @@ import ExperienceAnalysis from "./ExperienceAnalysis";
 import CertificationsAnalysis from "./CertificationsAnalysis";
 import LanguagesAnalysis from "./LanguagesAnalysis";
 import Recommendations from "./Recommendations";
+import Spinner from "../ui/Spinner";
 import type { ResumeMatchResponse } from "../../types/match";
 import type { ParsedResume } from "../../types/resume";
 import type { ParsedJobDescription } from "../../types/jobDescription";
@@ -23,14 +24,14 @@ function AnalysisDashboard({ data, resume, jobDescription, onAnalyzeAgain, isAna
   return (
     <div className="dashboard">
       <div className="dash-header">
-        <h2 style={{ margin: 0 }}>Analysis Dashboard</h2>
+        <h2 style={{ margin: 0 }}>5. Analysis Dashboard</h2>
         <button
-          className="dash-button-secondary"
+          className="ui-button ui-button-secondary"
           onClick={onAnalyzeAgain}
           disabled={isAnalyzing}
           aria-label="Re-run matching analysis"
         >
-          {isAnalyzing ? "Analyzing..." : "Analyze Again"}
+          {isAnalyzing ? <Spinner label="Analyzing..." /> : "Analyze Again"}
         </button>
       </div>
 

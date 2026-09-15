@@ -1,4 +1,4 @@
-import Card from "./Card";
+import Card from "../ui/Card";
 import MatchBadge from "./MatchBadge";
 import type { EducationMatchResult } from "../../types/match";
 import type { EducationEntry } from "../../types/resume";
@@ -27,13 +27,11 @@ function EducationAnalysis({ educationMatch, resumeEducation, jobRequirements }:
         <div>
           <p className="dash-subheading">Job Requirement</p>
           {jobRequirements.length === 0 ? (
-            <p className="dash-empty">No education requirement specified.</p>
+            <p className="ui-empty-inline">No education requirement specified.</p>
           ) : (
-            <ul className="dash-list">
+            <ul className="dash-plain-list">
               {jobRequirements.map((req) => (
-                <li key={req} className="dash-list-item">
-                  {req}
-                </li>
+                <li key={req}>{req}</li>
               ))}
             </ul>
           )}
@@ -41,13 +39,11 @@ function EducationAnalysis({ educationMatch, resumeEducation, jobRequirements }:
         <div>
           <p className="dash-subheading">Resume Education</p>
           {resumeEducation.length === 0 ? (
-            <p className="dash-empty">No education listed on the resume.</p>
+            <p className="ui-empty-inline">No education listed on the resume.</p>
           ) : (
-            <ul className="dash-list">
+            <ul className="dash-plain-list">
               {resumeEducation.map((entry, index) => (
-                <li key={index} className="dash-list-item">
-                  {describeEntry(entry)}
-                </li>
+                <li key={index}>{describeEntry(entry)}</li>
               ))}
             </ul>
           )}

@@ -1,45 +1,41 @@
 import type { ParsedJobDescription } from "../types/jobDescription";
+import { ChipList } from "./ui/Chip";
 
 interface ParsedJobDescriptionViewProps {
   data: ParsedJobDescription;
 }
 
-function StringList({ items }: { items: string[] }) {
-  if (items.length === 0) {
-    return <p>—</p>;
-  }
-  return (
-    <ul>
-      {items.map((item) => (
-        <li key={item}>{item}</li>
-      ))}
-    </ul>
-  );
-}
-
 function ParsedJobDescriptionView({ data }: ParsedJobDescriptionViewProps) {
   return (
     <div>
-      <h3>Job Title</h3>
+      <h4>Job Title</h4>
       <p>{data.job_title ?? "—"}</p>
 
-      <h3>Required Skills</h3>
-      <StringList items={data.required_skills} />
+      <h4>Required Skills</h4>
+      <ChipList items={data.required_skills} variant="neutral" emptyLabel="No required skills detected." />
 
-      <h3>Preferred Skills</h3>
-      <StringList items={data.preferred_skills} />
+      <h4>Preferred Skills</h4>
+      <ChipList items={data.preferred_skills} variant="neutral" emptyLabel="No preferred skills detected." />
 
-      <h3>Education Requirements</h3>
-      <StringList items={data.education_requirements} />
+      <h4>Education Requirements</h4>
+      <ChipList
+        items={data.education_requirements}
+        variant="neutral"
+        emptyLabel="No education requirements detected."
+      />
 
-      <h3>Experience Requirements</h3>
-      <StringList items={data.experience_requirements} />
+      <h4>Experience Requirements</h4>
+      <ChipList
+        items={data.experience_requirements}
+        variant="neutral"
+        emptyLabel="No experience requirements detected."
+      />
 
-      <h3>Certifications</h3>
-      <StringList items={data.certifications} />
+      <h4>Certifications</h4>
+      <ChipList items={data.certifications} variant="neutral" emptyLabel="No certifications detected." />
 
-      <h3>Languages</h3>
-      <StringList items={data.languages} />
+      <h4>Languages</h4>
+      <ChipList items={data.languages} variant="neutral" emptyLabel="No languages detected." />
     </div>
   );
 }

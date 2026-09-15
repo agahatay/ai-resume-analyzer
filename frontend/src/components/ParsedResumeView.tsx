@@ -1,4 +1,5 @@
 import type { ParsedResume } from "../types/resume";
+import { ChipList } from "./ui/Chip";
 
 interface ParsedResumeViewProps {
   data: ParsedResume;
@@ -7,7 +8,7 @@ interface ParsedResumeViewProps {
 function ParsedResumeView({ data }: ParsedResumeViewProps) {
   return (
     <div>
-      <h3>Contact</h3>
+      <h4>Contact</h4>
       <ul>
         <li>Name: {data.full_name ?? "—"}</li>
         <li>Email: {data.email ?? "—"}</li>
@@ -15,18 +16,10 @@ function ParsedResumeView({ data }: ParsedResumeViewProps) {
         <li>Location: {data.location ?? "—"}</li>
       </ul>
 
-      <h3>Skills</h3>
-      {data.skills.length > 0 ? (
-        <ul>
-          {data.skills.map((skill) => (
-            <li key={skill}>{skill}</li>
-          ))}
-        </ul>
-      ) : (
-        <p>—</p>
-      )}
+      <h4>Skills</h4>
+      <ChipList items={data.skills} variant="neutral" emptyLabel="No skills detected." />
 
-      <h3>Education</h3>
+      <h4>Education</h4>
       {data.education.length > 0 ? (
         <ul>
           {data.education.map((entry, index) => (
@@ -38,10 +31,10 @@ function ParsedResumeView({ data }: ParsedResumeViewProps) {
           ))}
         </ul>
       ) : (
-        <p>—</p>
+        <p className="ui-empty-inline">No education detected.</p>
       )}
 
-      <h3>Work Experience</h3>
+      <h4>Work Experience</h4>
       {data.work_experience.length > 0 ? (
         <ul>
           {data.work_experience.map((entry, index) => (
@@ -53,10 +46,10 @@ function ParsedResumeView({ data }: ParsedResumeViewProps) {
           ))}
         </ul>
       ) : (
-        <p>—</p>
+        <p className="ui-empty-inline">No work experience detected.</p>
       )}
 
-      <h3>Projects</h3>
+      <h4>Projects</h4>
       {data.projects.length > 0 ? (
         <ul>
           {data.projects.map((entry, index) => (
@@ -67,30 +60,14 @@ function ParsedResumeView({ data }: ParsedResumeViewProps) {
           ))}
         </ul>
       ) : (
-        <p>—</p>
+        <p className="ui-empty-inline">No projects detected.</p>
       )}
 
-      <h3>Certifications</h3>
-      {data.certifications.length > 0 ? (
-        <ul>
-          {data.certifications.map((item) => (
-            <li key={item}>{item}</li>
-          ))}
-        </ul>
-      ) : (
-        <p>—</p>
-      )}
+      <h4>Certifications</h4>
+      <ChipList items={data.certifications} variant="neutral" emptyLabel="No certifications detected." />
 
-      <h3>Languages</h3>
-      {data.languages.length > 0 ? (
-        <ul>
-          {data.languages.map((item) => (
-            <li key={item}>{item}</li>
-          ))}
-        </ul>
-      ) : (
-        <p>—</p>
-      )}
+      <h4>Languages</h4>
+      <ChipList items={data.languages} variant="neutral" emptyLabel="No languages detected." />
     </div>
   );
 }

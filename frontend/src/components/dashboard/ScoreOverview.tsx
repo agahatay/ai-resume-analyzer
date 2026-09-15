@@ -1,4 +1,5 @@
-import Card from "./Card";
+import Card from "../ui/Card";
+import ProgressRing from "../ui/ProgressRing";
 
 interface ScoreOverviewProps {
   deterministicScore: number;
@@ -18,9 +19,15 @@ function ScoreTile({
 }) {
   return (
     <div className={`dash-score-tile ${primary ? "dash-score-tile-primary" : ""}`.trim()}>
-      {/* Values are rendered exactly as returned by the backend (Math.round is
-          display-only rounding, not a recalculation of any formula). */}
-      <div className="dash-score-value">{Math.round(value)}%</div>
+      {/* The ring and percentage both render the backend value as-is
+          (Math.round is display-only rounding, never a recalculation). */}
+      <ProgressRing
+        value={value}
+        size={primary ? 108 : 84}
+        strokeWidth={primary ? 10 : 7}
+        color={primary ? "var(--color-primary)" : "var(--color-success)"}
+        label={`${label}: ${Math.round(value)} percent`}
+      />
       <div className="dash-score-label">{label}</div>
     </div>
   );

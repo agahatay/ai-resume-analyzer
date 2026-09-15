@@ -1,5 +1,5 @@
-import Card from "./Card";
-import MatchList from "./MatchList";
+import Card from "../ui/Card";
+import { ChipList } from "../ui/Chip";
 import type { LanguageMatchResult } from "../../types/match";
 
 interface LanguagesAnalysisProps {
@@ -14,13 +14,13 @@ function LanguagesAnalysis({ languageMatch }: LanguagesAnalysisProps) {
           <p className="dash-subheading">
             Matched <span className="dash-count">({languageMatch.matched.length})</span>
           </p>
-          <MatchList items={languageMatch.matched} variant="matched" emptyLabel="No languages matched." />
+          <ChipList items={languageMatch.matched} variant="matched" emptyLabel="No languages matched." />
         </div>
         <div>
           <p className="dash-subheading">
             Missing <span className="dash-count">({languageMatch.missing.length})</span>
           </p>
-          <MatchList items={languageMatch.missing} variant="missing" emptyLabel="No languages missing." />
+          <ChipList items={languageMatch.missing} variant="missing" emptyLabel="No languages missing." />
         </div>
       </div>
     </Card>

@@ -1,4 +1,4 @@
-import Card from "./Card";
+import Card from "../ui/Card";
 import type { SemanticMatchItem } from "../../types/match";
 
 interface SemanticMatchesProps {
@@ -15,8 +15,16 @@ const CATEGORY_LABELS: Record<SemanticMatchItem["category"], string> = {
   certifications: "Certifications",
 };
 
+function similarityBand(similarity: number): "high" | "medium" | "low" {
+  if (similarity >= 0.5) return "high";
+  if (similarity >= 0.3) return "medium";
+  return "low";
+}
+
 function SemanticMatchCard({ item }: { item: SemanticMatchItem }) {
   const similarityPercent = Math.round(item.similarity * 100);
+  const band = similarityBand(item.similarity);
+
   return (
     <div className="dash-semantic-item">
       <span className="dash-semantic-label">Job Requirement</span>
@@ -29,15 +37,15 @@ function SemanticMatchCard({ item }: { item: SemanticMatchItem }) {
 
       <div className="dash-semantic-row">
         <span>
-          Similarity: <strong>{item.similarity.toFixed(2)}</strong> ({similarityPercent}%)
+          Similarity: <strong>{similarityPercent}%</strong> ({item.similarity.toFixed(2)})
         </span>
-        <span className={`dash-badge ${item.matched ? "dash-badge-matched" : "dash-badge-missing"}`}>
+        <span className={`ui-badge ${item.matched ? "ui-badge-matched" : "ui-badge-missing"}`}>
           {item.matched ? "✓ Semantic Match" : "✗ Not Matched"}
         </span>
       </div>
       <div className="dash-similarity-bar" role="img" aria-label={`Similarity ${similarityPercent}%`}>
         <div
-          className={`dash-similarity-bar-fill ${item.matched ? "" : "dash-below-threshold"}`}
+          className={`dash-similarity-bar-fill dash-similarity-${band}`}
           style={{ width: `${similarityPercent}%` }}
         />
       </div>
@@ -54,7 +62,7 @@ function SemanticMatches({ matches, modelName, similarityThreshold }: SemanticMa
         Model: {modelName} · Similarity threshold: {similarityThreshold}
       </p>
       {matches.length === 0 ? (
-        <p className="dash-empty">No semantic comparisons were available for this job description.</p>
+        <p className="ui-empty-inline">No semantic comparisons were available for this job description.</p>
       ) : (
         categories.map((category) => (
           <div key={category}>

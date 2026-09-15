@@ -1,4 +1,4 @@
-import Card from "./Card";
+import Card from "../ui/Card";
 import MatchBadge from "./MatchBadge";
 import type { ExperienceMatchResult } from "../../types/match";
 import type { ExperienceEntry } from "../../types/resume";
@@ -33,13 +33,11 @@ function ExperienceAnalysis({ experienceMatch, resumeExperience, jobRequirements
         <div>
           <p className="dash-subheading">Required Experience</p>
           {jobRequirements.length === 0 ? (
-            <p className="dash-empty">No experience requirement specified.</p>
+            <p className="ui-empty-inline">No experience requirement specified.</p>
           ) : (
-            <ul className="dash-list">
+            <ul className="dash-plain-list">
               {jobRequirements.map((req) => (
-                <li key={req} className="dash-list-item">
-                  {req}
-                </li>
+                <li key={req}>{req}</li>
               ))}
             </ul>
           )}
@@ -47,13 +45,11 @@ function ExperienceAnalysis({ experienceMatch, resumeExperience, jobRequirements
         <div>
           <p className="dash-subheading">Detected Resume Experience</p>
           {resumeExperience.length === 0 ? (
-            <p className="dash-empty">No work experience listed on the resume.</p>
+            <p className="ui-empty-inline">No work experience listed on the resume.</p>
           ) : (
-            <ul className="dash-list">
+            <ul className="dash-plain-list">
               {resumeExperience.map((entry, index) => (
-                <li key={index} className="dash-list-item">
-                  {describeEntry(entry)}
-                </li>
+                <li key={index}>{describeEntry(entry)}</li>
               ))}
             </ul>
           )}

@@ -1,5 +1,5 @@
-import Card from "./Card";
-import MatchList from "./MatchList";
+import Card from "../ui/Card";
+import { ChipList } from "../ui/Chip";
 import type { CertificationMatchResult } from "../../types/match";
 
 interface CertificationsAnalysisProps {
@@ -14,13 +14,13 @@ function CertificationsAnalysis({ certificationMatch }: CertificationsAnalysisPr
           <p className="dash-subheading">
             Matched <span className="dash-count">({certificationMatch.matched.length})</span>
           </p>
-          <MatchList items={certificationMatch.matched} variant="matched" emptyLabel="No certifications matched." />
+          <ChipList items={certificationMatch.matched} variant="matched" emptyLabel="No certifications matched." />
         </div>
         <div>
           <p className="dash-subheading">
             Missing <span className="dash-count">({certificationMatch.missing.length})</span>
           </p>
-          <MatchList items={certificationMatch.missing} variant="missing" emptyLabel="No certifications missing." />
+          <ChipList items={certificationMatch.missing} variant="missing" emptyLabel="No certifications missing." />
         </div>
       </div>
     </Card>

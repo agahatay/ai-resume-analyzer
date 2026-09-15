@@ -4,6 +4,10 @@ import type { ParsedResume } from "../types/resume";
 import type { ParsedJobDescription } from "../types/jobDescription";
 import type { ResumeMatchResponse } from "../types/match";
 import AnalysisDashboard from "./dashboard/AnalysisDashboard";
+import Card from "./ui/Card";
+import Spinner from "./ui/Spinner";
+import ErrorBanner from "./ui/ErrorBanner";
+import EmptyState from "./ui/EmptyState";
 
 type MatchState = "idle" | "loading" | "error";
 
@@ -38,32 +42,39 @@ function MatchSection({ resume, jobDescription, onMatched }: MatchSectionProps) 
     }
   }
 
+  if (matchResult) {
+    return (
+      <AnalysisDashboard
+        data={matchResult}
+        resume={resume}
+        jobDescription={jobDescription}
+        onAnalyzeAgain={handleMatch}
+        isAnalyzing={state === "loading"}
+      />
+    );
+  }
+
   return (
-    <section>
-      <h2>Match Resume</h2>
+    <Card title="5. Match Resume" titleLevel="h2">
+      <button className="ui-button ui-button-primary" onClick={handleMatch} disabled={state === "loading"}>
+        {state === "loading" ? <Spinner label="Matching..." /> : "Match Resume"}
+      </button>
 
-      {!matchResult && (
-        <button onClick={handleMatch} disabled={state === "loading"}>
-          {state === "loading" ? "Matching..." : "Match Resume"}
-        </button>
+      {state === "error" && (
+        <div style={{ marginTop: "0.75rem" }}>
+          <ErrorBanner message={errorMessage} />
+        </div>
       )}
 
-      {state === "error" && <p role="alert">Error: {errorMessage}</p>}
-
-      {!matchResult && state === "idle" && (
-        <p>Click "Match Resume" to generate your analysis.</p>
+      {state === "idle" && (
+        <div style={{ marginTop: "0.75rem" }}>
+          <EmptyState
+            title="No analysis yet"
+            message='Click "Match Resume" to compare your resume against the job description.'
+          />
+        </div>
       )}
-
-      {matchResult && (
-        <AnalysisDashboard
-          data={matchResult}
-          resume={resume}
-          jobDescription={jobDescription}
-          onAnalyzeAgain={handleMatch}
-          isAnalyzing={state === "loading"}
-        />
-      )}
-    </section>
+    </Card>
   );
 }
 

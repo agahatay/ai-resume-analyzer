@@ -1,9 +1,16 @@
+import "./ui/ui.css";
+
 interface StatusBadgeProps {
   status: string;
 }
 
 function StatusBadge({ status }: StatusBadgeProps) {
-  return <span>API status: {status}</span>;
+  const variant = status === "ok" ? "matched" : status === "unreachable" ? "missing" : "neutral";
+  return (
+    <p style={{ margin: 0 }}>
+      <span className={`ui-badge ui-badge-${variant}`}>API: {status}</span>
+    </p>
+  );
 }
 
 export default StatusBadge;

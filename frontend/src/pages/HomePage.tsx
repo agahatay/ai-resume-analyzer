@@ -1,5 +1,9 @@
 import { useEffect, useState } from "react";
 import "../components/dashboard/dashboard.css";
+import "../components/ui/ui.css";
+import AppHeader from "../components/layout/AppHeader";
+import WorkflowSteps from "../components/layout/WorkflowSteps";
+import type { WorkflowStep } from "../components/layout/WorkflowSteps";
 import StatusBadge from "../components/StatusBadge";
 import ResumeUpload from "../components/ResumeUpload";
 import JobDescriptionInput from "../components/JobDescriptionInput";
@@ -43,33 +47,57 @@ function HomePage() {
 
   const hasInputData = parsedResume !== null || parsedJobDescription !== null;
 
+  const steps: WorkflowStep[] = [
+    { label: "Upload Resume", status: parsedResume ? "complete" : "current" },
+    {
+      label: "Parse Resume",
+      status: parsedResume ? "complete" : "current",
+    },
+    {
+      label: "Add Job Description",
+      status: parsedJobDescription ? "complete" : parsedResume ? "current" : "upcoming",
+    },
+    {
+      label: "Analyze",
+      status: matchResult ? "complete" : parsedResume && parsedJobDescription ? "current" : "upcoming",
+    },
+    { label: "View Results", status: matchResult ? "complete" : "upcoming" },
+  ];
+
   return (
-    <main>
-      <div className="dash-header">
-        <h1 style={{ margin: 0 }}>AI Resume Analyzer</h1>
+    <div className="app-shell">
+      <AppHeader>
         {hasInputData && (
-          <button className="dash-button-secondary" onClick={handleStartOver}>
+          <button className="ui-button ui-button-secondary" onClick={handleStartOver}>
             Start Over
           </button>
         )}
-      </div>
-      <StatusBadge status={status} />
+      </AppHeader>
 
-      <details className="dash-inputs-details" open={!matchResult}>
-        <summary>{matchResult ? "Edit Resume & Job Description" : "Resume & Job Description"}</summary>
-        <ResumeUpload key={`resume-${resetCount}`} onParsed={handleResumeParsed} />
-        <JobDescriptionInput key={`jd-${resetCount}`} onParsed={handleJobDescriptionParsed} />
-      </details>
+      <main className="app-container">
+        <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "1rem" }}>
+          <StatusBadge status={status} />
+          <WorkflowSteps steps={steps} />
+        </div>
 
-      {parsedResume && parsedJobDescription && (
-        <MatchSection
-          key={`match-${resetCount}`}
-          resume={parsedResume}
-          jobDescription={parsedJobDescription}
-          onMatched={setMatchResult}
-        />
-      )}
-    </main>
+        <details className="dash-inputs-details" open={!matchResult}>
+          <summary>{matchResult ? "Edit Resume & Job Description" : "Resume & Job Description"}</summary>
+          <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
+            <ResumeUpload key={`resume-${resetCount}`} onParsed={handleResumeParsed} />
+            <JobDescriptionInput key={`jd-${resetCount}`} onParsed={handleJobDescriptionParsed} />
+          </div>
+        </details>
+
+        {parsedResume && parsedJobDescription && (
+          <MatchSection
+            key={`match-${resetCount}`}
+            resume={parsedResume}
+            jobDescription={parsedJobDescription}
+            onMatched={setMatchResult}
+          />
+        )}
+      </main>
+    </div>
   );
 }
 
