@@ -1,12 +1,13 @@
 from fastapi import APIRouter, HTTPException, UploadFile, status
 
 from app.core.config import get_settings
-from app.schemas.resume import ResumeUploadResponse
+from app.schemas.resume import ParsedResume, ResumeParseRequest, ResumeUploadResponse
 from app.services.pdf_service import (
     EmptyPDFTextError,
     InvalidPDFError,
     extract_text_from_pdf,
 )
+from app.services.resume_parser import parse_resume
 
 router = APIRouter(prefix="/resume", tags=["resume"])
 
@@ -60,3 +61,14 @@ async def upload_resume(file: UploadFile) -> ResumeUploadResponse:
         extracted_text=extracted_text,
         character_count=len(extracted_text),
     )
+
+
+@router.post("/parse", response_model=ParsedResume)
+async def parse_resume_endpoint(payload: ResumeParseRequest) -> ParsedResume:
+    try:
+        return parse_resume(payload.text)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to parse resume text.",
+        ) from exc

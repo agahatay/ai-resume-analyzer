@@ -1,8 +1,11 @@
 import { useState } from "react";
 import type { ChangeEvent } from "react";
-import { uploadResume } from "../services/resumeService";
+import { parseResume, uploadResume } from "../services/resumeService";
+import type { ParsedResume } from "../types/resume";
+import ParsedResumeView from "./ParsedResumeView";
 
 type UploadState = "idle" | "loading" | "success" | "error";
+type ParseState = "idle" | "loading" | "success" | "error";
 
 function ResumeUpload() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -11,11 +14,18 @@ function ResumeUpload() {
   const [characterCount, setCharacterCount] = useState<number>(0);
   const [errorMessage, setErrorMessage] = useState<string>("");
 
+  const [parseState, setParseState] = useState<ParseState>("idle");
+  const [parsedResume, setParsedResume] = useState<ParsedResume | null>(null);
+  const [parseErrorMessage, setParseErrorMessage] = useState<string>("");
+
   function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0] ?? null;
     setSelectedFile(file);
     setState("idle");
     setErrorMessage("");
+    setParseState("idle");
+    setParsedResume(null);
+    setParseErrorMessage("");
   }
 
   async function handleUpload() {
@@ -25,6 +35,9 @@ function ResumeUpload() {
 
     setState("loading");
     setErrorMessage("");
+    setParseState("idle");
+    setParsedResume(null);
+    setParseErrorMessage("");
 
     try {
       const result = await uploadResume(selectedFile);
@@ -34,6 +47,20 @@ function ResumeUpload() {
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "Upload failed.");
       setState("error");
+    }
+  }
+
+  async function handleParse() {
+    setParseState("loading");
+    setParseErrorMessage("");
+
+    try {
+      const result = await parseResume(extractedText);
+      setParsedResume(result);
+      setParseState("success");
+    } catch (error) {
+      setParseErrorMessage(error instanceof Error ? error.message : "Parsing failed.");
+      setParseState("error");
     }
   }
 
@@ -51,6 +78,16 @@ function ResumeUpload() {
         <div>
           <p>Extracted {characterCount} characters.</p>
           <textarea readOnly value={extractedText} rows={20} style={{ width: "100%" }} />
+
+          <div>
+            <button onClick={handleParse} disabled={parseState === "loading"}>
+              {parseState === "loading" ? "Parsing..." : "Parse Resume"}
+            </button>
+          </div>
+
+          {parseState === "error" && <p role="alert">Error: {parseErrorMessage}</p>}
+
+          {parseState === "success" && parsedResume && <ParsedResumeView data={parsedResume} />}
         </div>
       )}
     </section>
