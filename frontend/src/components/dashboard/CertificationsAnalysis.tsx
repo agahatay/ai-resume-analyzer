@@ -1,0 +1,30 @@
+import Card from "./Card";
+import MatchList from "./MatchList";
+import type { CertificationMatchResult } from "../../types/match";
+
+interface CertificationsAnalysisProps {
+  certificationMatch: CertificationMatchResult;
+}
+
+function CertificationsAnalysis({ certificationMatch }: CertificationsAnalysisProps) {
+  return (
+    <Card title="Certifications">
+      <div className="dash-grid-2">
+        <div>
+          <p className="dash-subheading">
+            Matched <span className="dash-count">({certificationMatch.matched.length})</span>
+          </p>
+          <MatchList items={certificationMatch.matched} variant="matched" emptyLabel="No certifications matched." />
+        </div>
+        <div>
+          <p className="dash-subheading">
+            Missing <span className="dash-count">({certificationMatch.missing.length})</span>
+          </p>
+          <MatchList items={certificationMatch.missing} variant="missing" emptyLabel="No certifications missing." />
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+export default CertificationsAnalysis;
