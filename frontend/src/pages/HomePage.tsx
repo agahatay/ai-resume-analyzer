@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import StatusBadge from "../components/StatusBadge";
+import ResumeUpload from "../components/ResumeUpload";
 import { getHealth } from "../services/healthService";
 
 function HomePage() {
@@ -15,6 +16,7 @@ function HomePage() {
     <main>
       <h1>AI Resume Analyzer</h1>
       <StatusBadge status={status} />
+      <ResumeUpload />
     </main>
   );
 }

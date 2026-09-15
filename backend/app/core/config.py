@@ -15,6 +15,9 @@ class Settings(BaseSettings):
     # Comma-separated list of allowed origins for CORS.
     cors_origins: str = "http://localhost:5173"
 
+    # Maximum allowed size for an uploaded resume PDF, in bytes.
+    max_resume_upload_size_bytes: int = 5 * 1024 * 1024  # 5 MB
+
     @property
     def cors_origins_list(self) -> list[str]:
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
