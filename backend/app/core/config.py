@@ -36,6 +36,16 @@ class Settings(BaseSettings):
     db_user: str = "postgres"
     db_password: SecretStr = SecretStr("")
 
+    # JWT auth settings (Phase 10A). jwt_secret_key is a SecretStr for the
+    # same reason db_password is: it must never appear in plain form in
+    # logs, tracebacks, or repr() output. "change_me" (matching
+    # .env.example) is only a fallback so the app still imports if .env
+    # doesn't set one; the real, gitignored backend/.env in this repo sets
+    # an actual random value. Never deploy with the literal "change_me".
+    jwt_secret_key: SecretStr = SecretStr("change_me")
+    jwt_algorithm: str = "HS256"
+    access_token_expire_minutes: int = 30
+
     @property
     def cors_origins_list(self) -> list[str]:
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]

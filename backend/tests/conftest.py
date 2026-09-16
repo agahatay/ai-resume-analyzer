@@ -9,6 +9,7 @@ from app.core.database import SessionLocal, engine
 from app.main import app
 from app.models.job_description import JobDescription
 from app.models.resume import Resume
+from app.models.user import User
 
 
 @pytest.fixture()
@@ -75,6 +76,25 @@ def cleanup_job_descriptions():
             job_description = session.get(JobDescription, job_description_id)
             if job_description is not None:
                 session.delete(job_description)
+        session.commit()
+    finally:
+        session.close()
+
+
+@pytest.fixture()
+def cleanup_users():
+    """Same purpose as cleanup_resumes, for User rows created by tests
+    going through the live HTTP API (POST /api/auth/register)."""
+    created_ids: list[uuid.UUID] = []
+    yield created_ids
+    if not created_ids:
+        return
+    session = SessionLocal()
+    try:
+        for user_id in created_ids:
+            user = session.get(User, user_id)
+            if user is not None:
+                session.delete(user)
         session.commit()
     finally:
         session.close()

@@ -14,6 +14,7 @@ from app.models.mixins import CreatedAtMixin, TimestampMixin, UUIDPrimaryKeyMixi
 
 if TYPE_CHECKING:
     from app.models.analysis import ResumeAnalysis
+    from app.models.user import User
 
 # Mirrors app.schemas.job_description.ParsedJobDescription's category buckets
 # (required_skills / preferred_skills / education / experience /
@@ -33,8 +34,19 @@ class JobDescription(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
     __tablename__ = "job_descriptions"
 
+    # Nullable (Phase 10A): existing endpoints are not yet auth-protected
+    # (that's Phase 10B), so a job description can still be created with
+    # no owner. ON DELETE CASCADE: deleting a user deletes their job
+    # descriptions, matching this schema's existing ownership-cascade
+    # pattern everywhere else.
+    user_id: Mapped[uuid.UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=True, index=True
+    )
+
     raw_text: Mapped[str] = mapped_column(Text, nullable=False)
     job_title: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
+
+    owner: Mapped["User | None"] = relationship(back_populates="job_descriptions")
 
     # order_by=<pk> (Phase 9C-2): without it, PostgreSQL does not guarantee
     # row order for a plain SELECT, which would make job description

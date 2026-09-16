@@ -18,6 +18,7 @@ from app.models.resume import (
     ResumeProject,
     ResumeSkill,
 )
+from app.models.user import User
 
 __all__ = [
     "AnalysisSkillResult",
@@ -32,4 +33,5 @@ __all__ = [
     "ResumeLanguage",
     "ResumeProject",
     "ResumeSkill",
+    "User",
 ]

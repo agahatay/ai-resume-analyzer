@@ -21,12 +21,21 @@ from app.models.mixins import CreatedAtMixin, TimestampMixin, UUIDPrimaryKeyMixi
 
 if TYPE_CHECKING:
     from app.models.analysis import ResumeAnalysis
+    from app.models.user import User
 
 
 class Resume(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     """A parsed resume: extracted text plus structured contact fields."""
 
     __tablename__ = "resumes"
+
+    # Nullable (Phase 10A): existing endpoints are not yet auth-protected
+    # (that's Phase 10B), so a resume can still be created with no owner.
+    # ON DELETE CASCADE: deleting a user deletes their resumes, matching
+    # this schema's existing ownership-cascade pattern everywhere else.
+    user_id: Mapped[uuid.UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=True, index=True
+    )
 
     original_filename: Mapped[str] = mapped_column(String(500), nullable=False)
     extracted_text: Mapped[str] = mapped_column(Text, nullable=False)
@@ -37,6 +46,8 @@ class Resume(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     email: Mapped[str | None] = mapped_column(String(320), nullable=True, index=True)
     phone: Mapped[str | None] = mapped_column(String(50), nullable=True)
     location: Mapped[str | None] = mapped_column(String(255), nullable=True)
+
+    owner: Mapped["User | None"] = relationship(back_populates="resumes")
 
     # order_by=<pk> on every child collection below (Phase 9C-1): without it,
     # PostgreSQL does not guarantee row order for a plain SELECT, which would
