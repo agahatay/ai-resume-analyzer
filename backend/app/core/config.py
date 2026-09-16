@@ -1,5 +1,6 @@
 from functools import lru_cache
 
+from pydantic import SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -27,9 +28,26 @@ class Settings(BaseSettings):
     # See semantic_matcher.py module docstring for how this default was chosen.
     semantic_similarity_threshold: float = 0.3
 
+    # PostgreSQL connection settings (Phase 9A). db_password is a SecretStr so
+    # it never appears in plain form in logs, tracebacks, or repr() output.
+    db_host: str = "localhost"
+    db_port: int = 5432
+    db_name: str = "ai_resume_analyzer"
+    db_user: str = "postgres"
+    db_password: SecretStr = SecretStr("")
+
     @property
     def cors_origins_list(self) -> list[str]:
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
+
+    @property
+    def database_url(self) -> str:
+        """SQLAlchemy 2.x connection URL using the psycopg 3 driver."""
+        password = self.db_password.get_secret_value()
+        return (
+            f"postgresql+psycopg://{self.db_user}:{password}"
+            f"@{self.db_host}:{self.db_port}/{self.db_name}"
+        )
 
 
 @lru_cache
