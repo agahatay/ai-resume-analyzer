@@ -1,6 +1,8 @@
-from fastapi import APIRouter, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, status
+from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
+from app.core.database import get_db
 from app.schemas.match import ResumeMatchRequest, ResumeMatchResponse
 from app.schemas.resume import ParsedResume, ResumeParseRequest, ResumeUploadResponse
 from app.services.pdf_service import (
@@ -10,6 +12,12 @@ from app.services.pdf_service import (
 )
 from app.services.resume_matcher import match_resume_to_job
 from app.services.resume_parser import parse_resume
+from app.services.resume_repository import (
+    ResumeNotFoundError,
+    create_resume,
+    get_or_create_resume_for_parse,
+    save_parsed_resume_data,
+)
 
 router = APIRouter(prefix="/resume", tags=["resume"])
 
@@ -17,7 +25,7 @@ settings = get_settings()
 
 
 @router.post("/upload", response_model=ResumeUploadResponse)
-async def upload_resume(file: UploadFile) -> ResumeUploadResponse:
+async def upload_resume(file: UploadFile, db: Session = Depends(get_db)) -> ResumeUploadResponse:
     if file.content_type != "application/pdf":
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -58,22 +66,52 @@ async def upload_resume(file: UploadFile) -> ResumeUploadResponse:
             detail=str(exc),
         ) from exc
 
+    try:
+        resume = create_resume(db, original_filename=file.filename, extracted_text=extracted_text)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to save the uploaded resume.",
+        ) from exc
+
     return ResumeUploadResponse(
         filename=file.filename,
         extracted_text=extracted_text,
         character_count=len(extracted_text),
+        resume_id=resume.id,
     )
 
 
 @router.post("/parse", response_model=ParsedResume)
-async def parse_resume_endpoint(payload: ResumeParseRequest) -> ParsedResume:
+async def parse_resume_endpoint(payload: ResumeParseRequest, db: Session = Depends(get_db)) -> ParsedResume:
     try:
-        return parse_resume(payload.text)
+        parsed = parse_resume(payload.text)
     except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to parse resume text.",
         ) from exc
+
+    try:
+        resume = get_or_create_resume_for_parse(db, resume_id=payload.resume_id, text=payload.text)
+    except ResumeNotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to resolve the resume record for this parse.",
+        ) from exc
+
+    try:
+        save_parsed_resume_data(db, resume, parsed)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to save parsed resume data.",
+        ) from exc
+
+    parsed.resume_id = resume.id
+    return parsed
 
 
 @router.post("/match", response_model=ResumeMatchResponse)

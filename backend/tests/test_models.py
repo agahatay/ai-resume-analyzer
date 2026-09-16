@@ -10,9 +10,8 @@ recommends for test isolation, so nothing written here is ever persisted.
 
 import pytest
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
 
-from app.core.database import Base, engine
+from app.core.database import Base
 from app.models import (
     AnalysisSummary,
     JobDescription,
@@ -22,19 +21,6 @@ from app.models import (
     ResumeEducation,
     ResumeSkill,
 )
-
-
-@pytest.fixture()
-def db_session():
-    connection = engine.connect()
-    trans = connection.begin()
-    session = Session(bind=connection, join_transaction_mode="create_savepoint")
-    try:
-        yield session
-    finally:
-        session.close()
-        trans.rollback()
-        connection.close()
 
 
 def test_all_twelve_tables_registered():

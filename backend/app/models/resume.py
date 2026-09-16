@@ -38,23 +38,31 @@ class Resume(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     phone: Mapped[str | None] = mapped_column(String(50), nullable=True)
     location: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
+    # order_by=<pk> on every child collection below (Phase 9C-1): without it,
+    # PostgreSQL does not guarantee row order for a plain SELECT, which would
+    # make resume reconstruction (see resume_repository.load_parsed_resume)
+    # non-deterministic. This is a query-ordering hint only - no column,
+    # table, or migration change.
     skills: Mapped[list["ResumeSkill"]] = relationship(
-        back_populates="resume", cascade="all, delete-orphan", passive_deletes=True
+        back_populates="resume", cascade="all, delete-orphan", passive_deletes=True, order_by="ResumeSkill.id"
     )
     education: Mapped[list["ResumeEducation"]] = relationship(
-        back_populates="resume", cascade="all, delete-orphan", passive_deletes=True
+        back_populates="resume", cascade="all, delete-orphan", passive_deletes=True, order_by="ResumeEducation.id"
     )
     work_experience: Mapped[list["ResumeExperience"]] = relationship(
-        back_populates="resume", cascade="all, delete-orphan", passive_deletes=True
+        back_populates="resume", cascade="all, delete-orphan", passive_deletes=True, order_by="ResumeExperience.id"
     )
     projects: Mapped[list["ResumeProject"]] = relationship(
-        back_populates="resume", cascade="all, delete-orphan", passive_deletes=True
+        back_populates="resume", cascade="all, delete-orphan", passive_deletes=True, order_by="ResumeProject.id"
     )
     certifications: Mapped[list["ResumeCertification"]] = relationship(
-        back_populates="resume", cascade="all, delete-orphan", passive_deletes=True
+        back_populates="resume",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        order_by="ResumeCertification.id",
     )
     languages: Mapped[list["ResumeLanguage"]] = relationship(
-        back_populates="resume", cascade="all, delete-orphan", passive_deletes=True
+        back_populates="resume", cascade="all, delete-orphan", passive_deletes=True, order_by="ResumeLanguage.id"
     )
     analyses: Mapped[list["ResumeAnalysis"]] = relationship(
         back_populates="resume", cascade="all, delete-orphan", passive_deletes=True
