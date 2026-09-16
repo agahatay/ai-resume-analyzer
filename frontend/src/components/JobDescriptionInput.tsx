@@ -23,6 +23,11 @@ function JobDescriptionInput({ onParsed }: JobDescriptionInputProps) {
     null,
   );
   const [errorMessage, setErrorMessage] = useState<string>("");
+  // The database id of the JobDescription row this text was persisted as.
+  // Kept across edits (only cleared by handleClear) so re-analyzing after
+  // a tweak updates that same record instead of creating a new one each
+  // time, per POST /api/job-description/parse's update-in-place behavior.
+  const [jobDescriptionId, setJobDescriptionId] = useState<string | null>(null);
 
   function handleTextChange(event: ChangeEvent<HTMLTextAreaElement>) {
     setText(event.target.value);
@@ -35,6 +40,7 @@ function JobDescriptionInput({ onParsed }: JobDescriptionInputProps) {
     setParsedJobDescription(null);
     setState("idle");
     setErrorMessage("");
+    setJobDescriptionId(null);
     onParsed?.(null);
   }
 
@@ -48,8 +54,9 @@ function JobDescriptionInput({ onParsed }: JobDescriptionInputProps) {
     onParsed?.(null);
 
     try {
-      const result = await parseJobDescription(text);
+      const result = await parseJobDescription(text, jobDescriptionId);
       setParsedJobDescription(result);
+      setJobDescriptionId(result.job_description_id ?? null);
       setState("success");
       onParsed?.(result);
     } catch (error) {

@@ -33,6 +33,10 @@ function ResumeUpload({ onParsed }: ResumeUploadProps) {
   const [extractedText, setExtractedText] = useState<string>("");
   const [characterCount, setCharacterCount] = useState<number>(0);
   const [errorMessage, setErrorMessage] = useState<string>("");
+  // The database id of the Resume row this upload created. Threaded into
+  // parseResume() below so re-parsing updates that same record rather
+  // than creating a new one.
+  const [resumeId, setResumeId] = useState<string | null>(null);
 
   const [parseState, setParseState] = useState<ParseState>("idle");
   const [parsedResume, setParsedResume] = useState<ParsedResume | null>(null);
@@ -46,6 +50,7 @@ function ResumeUpload({ onParsed }: ResumeUploadProps) {
     setParseState("idle");
     setParsedResume(null);
     setParseErrorMessage("");
+    setResumeId(null);
     onParsed?.(null);
   }
 
@@ -102,12 +107,14 @@ function ResumeUpload({ onParsed }: ResumeUploadProps) {
     setParseState("idle");
     setParsedResume(null);
     setParseErrorMessage("");
+    setResumeId(null);
     onParsed?.(null);
 
     try {
       const result = await uploadResume(selectedFile);
       setExtractedText(result.extracted_text);
       setCharacterCount(result.character_count);
+      setResumeId(result.resume_id);
       setState("success");
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "Upload failed.");
@@ -125,8 +132,9 @@ function ResumeUpload({ onParsed }: ResumeUploadProps) {
     onParsed?.(null);
 
     try {
-      const result = await parseResume(extractedText);
+      const result = await parseResume(extractedText, resumeId);
       setParsedResume(result);
+      setResumeId(result.resume_id ?? null);
       setParseState("success");
       onParsed?.(result);
     } catch (error) {

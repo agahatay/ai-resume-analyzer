@@ -25,14 +25,21 @@ function AnalysisDashboard({ data, resume, jobDescription, onAnalyzeAgain, isAna
     <div className="dashboard">
       <div className="dash-header">
         <h2 style={{ margin: 0 }}>5. Analysis Dashboard</h2>
-        <button
-          className="ui-button ui-button-secondary"
-          onClick={onAnalyzeAgain}
-          disabled={isAnalyzing}
-          aria-label="Re-run matching analysis"
-        >
-          {isAnalyzing ? <Spinner label="Analyzing..." /> : "Analyze Again"}
-        </button>
+        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+          {data.analysis_id && (
+            <span className="ui-badge ui-badge-matched" data-testid="analysis-saved-badge">
+              ✓ Analysis saved
+            </span>
+          )}
+          <button
+            className="ui-button ui-button-secondary"
+            onClick={onAnalyzeAgain}
+            disabled={isAnalyzing}
+            aria-label="Re-run matching analysis"
+          >
+            {isAnalyzing ? <Spinner label="Analyzing..." /> : "Analyze Again"}
+          </button>
+        </div>
       </div>
 
       <ScoreOverview

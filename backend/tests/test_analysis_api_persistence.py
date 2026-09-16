@@ -210,3 +210,28 @@ def test_match_with_unknown_resume_id_returns_404(client, cleanup_job_descriptio
         },
     )
     assert response.status_code == 404
+
+
+def test_match_with_unknown_job_description_id_returns_404(client, cleanup_resumes):
+    upload_resp = client.post(
+        "/api/resume/upload",
+        files={"file": ("resume.pdf", make_test_pdf_bytes(RESUME_TEXT), "application/pdf")},
+    )
+    resume_id = upload_resp.json()["resume_id"]
+    cleanup_resumes.append(resume_id)
+    parsed_resume_resp = client.post(
+        "/api/resume/parse",
+        json={"text": upload_resp.json()["extracted_text"], "resume_id": resume_id},
+    )
+
+    response = client.post(
+        "/api/resume/match",
+        json={
+            "resume": parsed_resume_resp.json(),
+            "job_description": {
+                "required_skills": ["Python"],
+                "job_description_id": "00000000-0000-0000-0000-000000000000",
+            },
+        },
+    )
+    assert response.status_code == 404

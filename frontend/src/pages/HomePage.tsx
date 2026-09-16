@@ -22,6 +22,16 @@ function HomePage() {
   const [matchResult, setMatchResult] = useState<ResumeMatchResponse | null>(null);
   const [resetCount, setResetCount] = useState(0);
 
+  // Phase 9D: the database ids that carry this workflow's identity from
+  // upload/parse through to matching. Derived from (and kept in sync
+  // with) the parsed/match response objects above, which already embed
+  // these same ids - tracked explicitly here so the app has one clear,
+  // named place holding "what resume/JD/analysis is this session on."
+  // Not persisted to localStorage/sessionStorage.
+  const [resumeId, setResumeId] = useState<string | null>(null);
+  const [jobDescriptionId, setJobDescriptionId] = useState<string | null>(null);
+  const [analysisId, setAnalysisId] = useState<string | null>(null);
+
   useEffect(() => {
     getHealth()
       .then((health) => setStatus(health.status))
@@ -30,18 +40,30 @@ function HomePage() {
 
   function handleResumeParsed(resume: ParsedResume | null) {
     setParsedResume(resume);
+    setResumeId(resume?.resume_id ?? null);
     setMatchResult(null);
+    setAnalysisId(null);
   }
 
   function handleJobDescriptionParsed(jobDescription: ParsedJobDescription | null) {
     setParsedJobDescription(jobDescription);
+    setJobDescriptionId(jobDescription?.job_description_id ?? null);
     setMatchResult(null);
+    setAnalysisId(null);
+  }
+
+  function handleMatched(result: ResumeMatchResponse | null) {
+    setMatchResult(result);
+    setAnalysisId(result?.analysis_id ?? null);
   }
 
   function handleStartOver() {
     setParsedResume(null);
     setParsedJobDescription(null);
     setMatchResult(null);
+    setResumeId(null);
+    setJobDescriptionId(null);
+    setAnalysisId(null);
     setResetCount((count) => count + 1);
   }
 
@@ -74,7 +96,14 @@ function HomePage() {
         )}
       </AppHeader>
 
-      <main className="app-container">
+      <main
+        className="app-container"
+        // Not shown in the UI (invisible data attributes) - exposes the
+        // ids this session currently holds, for automated flow testing.
+        data-resume-id={resumeId ?? undefined}
+        data-job-description-id={jobDescriptionId ?? undefined}
+        data-analysis-id={analysisId ?? undefined}
+      >
         <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "1rem" }}>
           <StatusBadge status={status} />
           <WorkflowSteps steps={steps} />
@@ -93,7 +122,7 @@ function HomePage() {
             key={`match-${resetCount}`}
             resume={parsedResume}
             jobDescription={parsedJobDescription}
-            onMatched={setMatchResult}
+            onMatched={handleMatched}
           />
         )}
       </main>

@@ -62,4 +62,8 @@ export interface ResumeMatchResponse {
   semantic_match: SemanticMatchResult;
   combined_match_score: number;
   combined_score_formula: string;
+  // Set only when both resume.resume_id and job_description.job_description_id
+  // were provided in the match request, in which case this result was
+  // persisted as a ResumeAnalysis row.
+  analysis_id?: string | null;
 }

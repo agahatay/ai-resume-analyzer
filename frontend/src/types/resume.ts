@@ -2,6 +2,7 @@ export interface ResumeUploadResponse {
   filename: string;
   extracted_text: string;
   character_count: number;
+  resume_id: string;
 }
 
 export interface EducationEntry {
@@ -35,4 +36,8 @@ export interface ParsedResume {
   projects: ProjectEntry[];
   certifications: string[];
   languages: string[];
+  // Set once this resume has been persisted (see POST /api/resume/upload
+  // and POST /api/resume/parse). Sent back on /api/resume/match so a
+  // successful match can be linked to this same database record.
+  resume_id?: string | null;
 }
