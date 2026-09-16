@@ -2,13 +2,14 @@ from logging.config import fileConfig
 
 from alembic import context
 
+import app.models  # noqa: F401 - registers every model on Base.metadata
 from app.core.config import get_settings
 from app.core.database import Base
 from app.core.database import engine as app_engine
 
-# Phase 9A: no application models exist yet, so target_metadata is just the
-# (currently empty) declarative Base. Future phases will import their model
-# modules here so "alembic revision --autogenerate" can see them.
+# Phase 9B: app.models (imported above, for its side effect of registering
+# every table) now populates this metadata with the full application
+# schema, so "alembic revision --autogenerate" can see it.
 target_metadata = Base.metadata
 
 # this is the Alembic Config object, which provides
