@@ -57,8 +57,16 @@ class ResumeAnalysis(UUIDPrimaryKeyMixin, CreatedAtMixin, Base):
 
     resume: Mapped["Resume"] = relationship(back_populates="analyses")
     job_description: Mapped["JobDescription"] = relationship(back_populates="analyses")
+    # order_by=<pk> (Phase 9C-3): without it, PostgreSQL does not guarantee
+    # row order for a plain SELECT, which would make analysis reconstruction
+    # (see analysis_repository.load_analysis) non-deterministic. Same
+    # query-ordering-hint-only fix applied to Resume/JobDescription's child
+    # relationships in Phase 9C-1/9C-2 - no column/table/migration change.
     skill_results: Mapped[list["AnalysisSkillResult"]] = relationship(
-        back_populates="analysis", cascade="all, delete-orphan", passive_deletes=True
+        back_populates="analysis",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        order_by="AnalysisSkillResult.id",
     )
     summary: Mapped["AnalysisSummary | None"] = relationship(
         back_populates="analysis",

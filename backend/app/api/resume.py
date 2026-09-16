@@ -10,12 +10,15 @@ from app.services.pdf_service import (
     InvalidPDFError,
     extract_text_from_pdf,
 )
+from app.services.analysis_repository import save_analysis_result
+from app.services.job_description_repository import get_job_description
 from app.services.resume_matcher import match_resume_to_job
 from app.services.resume_parser import parse_resume
 from app.services.resume_repository import (
     ResumeNotFoundError,
     create_resume,
     get_or_create_resume_for_parse,
+    get_resume,
     save_parsed_resume_data,
 )
 
@@ -115,11 +118,42 @@ async def parse_resume_endpoint(payload: ResumeParseRequest, db: Session = Depen
 
 
 @router.post("/match", response_model=ResumeMatchResponse)
-async def match_resume_endpoint(payload: ResumeMatchRequest) -> ResumeMatchResponse:
+async def match_resume_endpoint(payload: ResumeMatchRequest, db: Session = Depends(get_db)) -> ResumeMatchResponse:
     try:
-        return match_resume_to_job(payload.resume, payload.job_description)
+        result = match_resume_to_job(payload.resume, payload.job_description)
     except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to match resume against job description.",
         ) from exc
+
+    # Phase 9C-3: persist this match as a new analysis only when both ids
+    # are available. Neither id being present is the normal case for a
+    # standalone match call (e.g. pasted resume/JD text with no prior
+    # upload or parse) - existing behavior is preserved unchanged, and no
+    # Resume/JobDescription records are invented from a missing id.
+    resume_id = payload.resume.resume_id
+    job_description_id = payload.job_description.job_description_id
+    if resume_id is not None and job_description_id is not None:
+        if get_resume(db, resume_id) is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"No resume found with id {resume_id}.",
+            )
+        if get_job_description(db, job_description_id) is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"No job description found with id {job_description_id}.",
+            )
+        try:
+            analysis = save_analysis_result(
+                db, resume_id=resume_id, job_description_id=job_description_id, match_result=result
+            )
+        except Exception as exc:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to save the analysis result.",
+            ) from exc
+        result.analysis_id = analysis.id
+
+    return result

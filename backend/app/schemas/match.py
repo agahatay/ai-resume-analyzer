@@ -1,3 +1,4 @@
+import uuid
 from typing import Literal
 
 from pydantic import BaseModel, Field, model_validator
@@ -126,3 +127,10 @@ class ResumeMatchResponse(BaseModel):
     combined_score_formula: str = (
         "combined_match_score = 0.7 * deterministic_match.score + 0.3 * semantic_match.semantic_score"
     )
+
+    # Phase 9C-3: set only when both `resume.resume_id` and
+    # `job_description.job_description_id` were provided in the request,
+    # in which case this match result was persisted as a ResumeAnalysis
+    # row. None whenever either id was missing (matching behavior is
+    # unchanged either way - this field is purely additive).
+    analysis_id: uuid.UUID | None = None
