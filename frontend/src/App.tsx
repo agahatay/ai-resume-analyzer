@@ -1,11 +1,14 @@
 import AuthGate from "./components/AuthGate";
+import { AuthProvider } from "./context/AuthContext";
 import HomePage from "./pages/HomePage";
 
 function App() {
   return (
-    <AuthGate>
-      <HomePage />
-    </AuthGate>
+    <AuthProvider>
+      <AuthGate>
+        <HomePage />
+      </AuthGate>
+    </AuthProvider>
   );
 }
 

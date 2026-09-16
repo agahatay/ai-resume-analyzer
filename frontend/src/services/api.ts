@@ -1,4 +1,4 @@
-import { getAccessToken, setAccessToken } from "./authToken";
+import { getAccessToken, notifyUnauthorized, setAccessToken } from "./authToken";
 
 export const API_BASE_URL: string =
   import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
@@ -33,10 +33,21 @@ async function extractErrorMessage(response: Response, path: string): Promise<st
 
 async function handleResponse<T>(response: Response, path: string): Promise<T> {
   if (response.status === 401) {
+    // Only an *authenticated* request going 401 (a token was actually
+    // sent) means a live session just died - notify AuthContext so it
+    // can show "Your session has expired". A login/register call, which
+    // never carries a token, also 401s on wrong credentials; that must
+    // not be mistaken for an expired session (AuthContext still ignores
+    // this event unless it was previously authenticated, but not raising
+    // it here at all keeps auth-form error handling simpler and loop-free).
+    const hadToken = getAccessToken() !== null;
     // The stored token is missing/invalid/expired from the server's
     // point of view - drop it so the app's AuthGate shows the login
     // form again instead of repeating the same failed request.
     setAccessToken(null);
+    if (hadToken) {
+      notifyUnauthorized();
+    }
   }
   if (!response.ok) {
     throw new Error(await extractErrorMessage(response, path));

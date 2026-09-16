@@ -9,12 +9,13 @@ import ResumeUpload from "../components/ResumeUpload";
 import JobDescriptionInput from "../components/JobDescriptionInput";
 import MatchSection from "../components/MatchSection";
 import { getHealth } from "../services/healthService";
-import { setAccessToken } from "../services/authToken";
+import { useAuth } from "../context/AuthContext";
 import type { ParsedResume } from "../types/resume";
 import type { ParsedJobDescription } from "../types/jobDescription";
 import type { ResumeMatchResponse } from "../types/match";
 
 function HomePage() {
+  const { user, logout } = useAuth();
   const [status, setStatus] = useState<string>("checking...");
   const [parsedResume, setParsedResume] = useState<ParsedResume | null>(null);
   const [parsedJobDescription, setParsedJobDescription] = useState<ParsedJobDescription | null>(
@@ -69,9 +70,10 @@ function HomePage() {
   }
 
   function handleLogOut() {
-    // AuthGate (see App.tsx) re-renders the login form as soon as the
-    // token is cleared - no local state cleanup needed here beyond that.
-    setAccessToken(null);
+    // AuthGate (see App.tsx) re-renders the login form as soon as
+    // AuthContext's status flips to "unauthenticated" - no local state
+    // cleanup needed here beyond that.
+    logout();
   }
 
   const hasInputData = parsedResume !== null || parsedJobDescription !== null;
@@ -96,7 +98,12 @@ function HomePage() {
   return (
     <div className="app-shell">
       <AppHeader>
-        <div style={{ display: "flex", gap: "0.6rem" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
+          {user && (
+            <span className="ui-field-hint" style={{ marginRight: "0.2rem" }}>
+              {user.full_name ?? user.email}
+            </span>
+          )}
           {hasInputData && (
             <button className="ui-button ui-button-secondary" onClick={handleStartOver}>
               Start Over

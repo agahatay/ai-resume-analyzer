@@ -56,13 +56,13 @@ test("full upload -> parse -> analyze -> match workflow carries ids and saves th
 
   await page.goto("/");
 
-  // --- 0. Register + log in (Phase 10B's AuthGate) ---
+  // --- 0. Register + log in (Phase 10B/10C's AuthGate) ---
   const testEmail = `e2e-${Date.now()}-${Math.floor(Math.random() * 100000)}@example.com`;
   const testPassword = "s3cur3-password";
-  await page.getByRole("button", { name: "Need an account? Register" }).click();
+  await page.getByRole("tab", { name: "Register" }).click();
   await page.getByLabel("Email").fill(testEmail);
-  await page.getByLabel("Password").fill(testPassword);
-  await page.getByRole("button", { name: "Register & Log In" }).click();
+  await page.locator("#auth-password").fill(testPassword);
+  await page.getByRole("button", { name: "Create Account" }).click();
   await expect(page.getByRole("heading", { name: "1. Upload Resume" })).toBeVisible();
 
   // --- 1. Upload the resume PDF ---
