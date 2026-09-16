@@ -62,12 +62,15 @@ def _count_rows(session):
 
 
 def test_full_upload_parse_match_workflow_persists_exactly_one_of_each(
-    client, cleanup_resumes, cleanup_job_descriptions
+    client, cleanup_resumes, cleanup_job_descriptions, auth_headers_factory
 ):
+    _user_id, headers = auth_headers_factory()
+
     # 1. Upload the real PDF.
     upload_resp = client.post(
         "/api/resume/upload",
         files={"file": ("resume.pdf", make_test_pdf_bytes(RESUME_TEXT), "application/pdf")},
+        headers=headers,
     )
     assert upload_resp.status_code == 200
     upload_body = upload_resp.json()
@@ -78,13 +81,14 @@ def test_full_upload_parse_match_workflow_persists_exactly_one_of_each(
     parse_resume_resp = client.post(
         "/api/resume/parse",
         json={"text": upload_body["extracted_text"], "resume_id": resume_id},
+        headers=headers,
     )
     assert parse_resume_resp.status_code == 200
     parsed_resume = parse_resume_resp.json()
     assert parsed_resume["resume_id"] == resume_id
 
     # 3. Parse the job description.
-    parse_jd_resp = client.post("/api/job-description/parse", json={"text": JD_TEXT})
+    parse_jd_resp = client.post("/api/job-description/parse", json={"text": JD_TEXT}, headers=headers)
     assert parse_jd_resp.status_code == 200
     parsed_jd = parse_jd_resp.json()
     jd_id = parsed_jd["job_description_id"]
@@ -94,6 +98,7 @@ def test_full_upload_parse_match_workflow_persists_exactly_one_of_each(
     match_resp = client.post(
         "/api/resume/match",
         json={"resume": parsed_resume, "job_description": parsed_jd},
+        headers=headers,
     )
     assert match_resp.status_code == 200
     match_body = match_resp.json()
@@ -128,6 +133,7 @@ def test_full_upload_parse_match_workflow_persists_exactly_one_of_each(
     second_match_resp = client.post(
         "/api/resume/match",
         json={"resume": parsed_resume, "job_description": parsed_jd},
+        headers=headers,
     )
     assert second_match_resp.status_code == 200
     second_analysis_id = second_match_resp.json()["analysis_id"]

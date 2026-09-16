@@ -56,10 +56,17 @@ class JobDescriptionNotFoundError(Exception):
 
 
 def create_job_description(
-    db: Session, *, raw_text: str, job_title: str | None = None
+    db: Session, *, raw_text: str, job_title: str | None = None, user_id: uuid.UUID | None = None
 ) -> JobDescription:
-    """Create and persist a new JobDescription row."""
-    job_description = JobDescription(raw_text=raw_text, job_title=job_title)
+    """Create and persist a new JobDescription row.
+
+    user_id defaults to None only for callers without an authenticated
+    user in scope (some direct repository-level tests, and the
+    job_description_id-less case of get_or_create_job_description_for_parse
+    - though as of Phase 10B every real HTTP caller passes a real user_id,
+    since POST /api/job-description/parse now requires authentication).
+    """
+    job_description = JobDescription(raw_text=raw_text, job_title=job_title, user_id=user_id)
     db.add(job_description)
     try:
         db.commit()
@@ -71,25 +78,34 @@ def create_job_description(
 
 
 def get_job_description(db: Session, job_description_id: uuid.UUID) -> JobDescription | None:
-    """Fetch a JobDescription by id, or None if it does not exist."""
+    """Fetch a JobDescription by id, or None if it does not exist.
+    Ownership-blind on purpose - see get_resume's docstring for why."""
     return db.get(JobDescription, job_description_id)
 
 
 def get_or_create_job_description_for_parse(
-    db: Session, *, job_description_id: uuid.UUID | None, text: str
+    db: Session, *, job_description_id: uuid.UUID | None, text: str, user_id: uuid.UUID
 ) -> JobDescription:
-    """Resolve the JobDescription that a parse call should attach its data
-    to.
+    """Resolve the JobDescription that a parse call should attach its
+    data to, enforcing ownership throughout.
 
-    - job_description_id given: fetch it (raising
-      JobDescriptionNotFoundError if missing), keeping its raw_text in
-      sync with the text actually parsed.
-    - job_description_id not given: create a fresh JobDescription from
-      this text.
+    - job_description_id given: fetch it and verify
+      job_description.user_id == user_id, keeping its raw_text in sync
+      with the text actually parsed. A job description that doesn't
+      exist and one that exists but belongs to someone else raise the
+      exact same JobDescriptionNotFoundError with the same message - the
+      same deliberate, consistent policy resume_repository uses (see
+      Phase 10B report).
+    - job_description_id not given: create a fresh JobDescription owned
+      by user_id.
+
+    user_id is never taken from anywhere but the caller's own verified
+    identity (the router passes current_user.id from get_current_user) -
+    never from request body data.
     """
     if job_description_id is not None:
         job_description = get_job_description(db, job_description_id)
-        if job_description is None:
+        if job_description is None or job_description.user_id != user_id:
             raise JobDescriptionNotFoundError(f"No job description found with id {job_description_id}.")
         if job_description.raw_text != text:
             job_description.raw_text = text
@@ -101,7 +117,7 @@ def get_or_create_job_description_for_parse(
             db.refresh(job_description)
         return job_description
 
-    return create_job_description(db, raw_text=text)
+    return create_job_description(db, raw_text=text, user_id=user_id)
 
 
 # --------------------------------------------------------------------------

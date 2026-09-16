@@ -100,6 +100,57 @@ def cleanup_users():
         session.close()
 
 
+@pytest.fixture()
+def auth_headers_factory(client, cleanup_users):
+    """Returns a function that registers + logs in a fresh test user via
+    the real HTTP endpoints and returns (user_id, headers), where headers
+    is a ready-to-use {"Authorization": "Bearer <token>"} dict.
+
+    Callable multiple times per test to get distinct users - needed for
+    every cross-user ownership test in tests/test_ownership.py. Each
+    registered user is cleaned up via cleanup_users automatically.
+    """
+
+    def _make(email: str | None = None, password: str = "s3cur3-password") -> tuple[str, dict[str, str]]:
+        email = email or f"test-user-{uuid.uuid4().hex}@example.com"
+        register_resp = client.post("/api/auth/register", json={"email": email, "password": password})
+        assert register_resp.status_code == 200, register_resp.text
+        user_id = register_resp.json()["id"]
+        cleanup_users.append(user_id)
+
+        login_resp = client.post("/api/auth/login", json={"email": email, "password": password})
+        assert login_resp.status_code == 200, login_resp.text
+        token = login_resp.json()["access_token"]
+
+        return user_id, {"Authorization": f"Bearer {token}"}
+
+    return _make
+
+
+@pytest.fixture()
+def make_db_user(db_session):
+    """Creates a real User row directly in the db_session transaction
+    (rolled back at teardown, like everything else db_session touches),
+    for repository-level tests that need a genuine user_id to satisfy the
+    resumes/job_descriptions.user_id foreign key.
+
+    Uses a throwaway, non-Argon2 password_hash string on purpose: these
+    tests exercise ownership plumbing, not authentication, so there's no
+    need to pay Argon2's real hashing cost for every one of them.
+    """
+
+    def _make(email: str | None = None) -> User:
+        user = User(
+            email=email or f"repo-test-{uuid.uuid4().hex}@example.com",
+            password_hash="not-a-real-hash-repository-tests-only",
+        )
+        db_session.add(user)
+        db_session.flush()
+        return user
+
+    return _make
+
+
 def make_test_pdf_bytes(text: str) -> bytes:
     """Build a minimal real PDF (via fpdf2) containing the given text, so
     tests can exercise POST /api/resume/upload's actual text-extraction

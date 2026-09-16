@@ -57,29 +57,43 @@ def test_get_job_description_returns_none_for_unknown_id(db_session):
 # --------------------------------------------------------------------------
 
 
-def test_get_or_create_creates_new_jd_when_no_id_given(db_session):
+def test_get_or_create_creates_new_jd_when_no_id_given(db_session, make_db_user):
+    user = make_db_user()
     jd = job_description_repository.get_or_create_job_description_for_parse(
-        db_session, job_description_id=None, text="some jd text"
+        db_session, job_description_id=None, text="some jd text", user_id=user.id
     )
     assert jd.id is not None
     assert jd.raw_text == "some jd text"
     assert jd.job_title is None
+    assert jd.user_id == user.id
 
 
-def test_get_or_create_raises_for_unknown_job_description_id(db_session):
+def test_get_or_create_raises_for_unknown_job_description_id(db_session, make_db_user):
+    user = make_db_user()
     with pytest.raises(job_description_repository.JobDescriptionNotFoundError):
         job_description_repository.get_or_create_job_description_for_parse(
-            db_session, job_description_id=uuid.uuid4(), text="x"
+            db_session, job_description_id=uuid.uuid4(), text="x", user_id=user.id
         )
 
 
-def test_get_or_create_returns_existing_and_syncs_text(db_session):
-    jd = job_description_repository.create_job_description(db_session, raw_text="old text")
+def test_get_or_create_returns_existing_and_syncs_text(db_session, make_db_user):
+    user = make_db_user()
+    jd = job_description_repository.create_job_description(db_session, raw_text="old text", user_id=user.id)
     fetched = job_description_repository.get_or_create_job_description_for_parse(
-        db_session, job_description_id=jd.id, text="new text"
+        db_session, job_description_id=jd.id, text="new text", user_id=user.id
     )
     assert fetched.id == jd.id
     assert fetched.raw_text == "new text"
+
+
+def test_get_or_create_raises_when_jd_belongs_to_different_user(db_session, make_db_user):
+    owner = make_db_user()
+    other_user = make_db_user()
+    jd = job_description_repository.create_job_description(db_session, raw_text="text", user_id=owner.id)
+    with pytest.raises(job_description_repository.JobDescriptionNotFoundError):
+        job_description_repository.get_or_create_job_description_for_parse(
+            db_session, job_description_id=jd.id, text="new text", user_id=other_user.id
+        )
 
 
 # --------------------------------------------------------------------------

@@ -9,6 +9,7 @@ import ResumeUpload from "../components/ResumeUpload";
 import JobDescriptionInput from "../components/JobDescriptionInput";
 import MatchSection from "../components/MatchSection";
 import { getHealth } from "../services/healthService";
+import { setAccessToken } from "../services/authToken";
 import type { ParsedResume } from "../types/resume";
 import type { ParsedJobDescription } from "../types/jobDescription";
 import type { ResumeMatchResponse } from "../types/match";
@@ -67,6 +68,12 @@ function HomePage() {
     setResetCount((count) => count + 1);
   }
 
+  function handleLogOut() {
+    // AuthGate (see App.tsx) re-renders the login form as soon as the
+    // token is cleared - no local state cleanup needed here beyond that.
+    setAccessToken(null);
+  }
+
   const hasInputData = parsedResume !== null || parsedJobDescription !== null;
 
   const steps: WorkflowStep[] = [
@@ -89,11 +96,16 @@ function HomePage() {
   return (
     <div className="app-shell">
       <AppHeader>
-        {hasInputData && (
-          <button className="ui-button ui-button-secondary" onClick={handleStartOver}>
-            Start Over
+        <div style={{ display: "flex", gap: "0.6rem" }}>
+          {hasInputData && (
+            <button className="ui-button ui-button-secondary" onClick={handleStartOver}>
+              Start Over
+            </button>
+          )}
+          <button className="ui-button ui-button-ghost" onClick={handleLogOut}>
+            Log Out
           </button>
-        )}
+        </div>
       </AppHeader>
 
       <main

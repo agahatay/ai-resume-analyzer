@@ -38,6 +38,8 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session, selectinload
 
 from app.models.analysis import AnalysisSkillResult, AnalysisSummary, ResumeAnalysis
+from app.models.job_description import JobDescription
+from app.models.resume import Resume
 from app.schemas.match import ResumeMatchResponse, SemanticMatchItem
 
 
@@ -105,8 +107,26 @@ def create_analysis(
 
 
 def get_analysis(db: Session, analysis_id: uuid.UUID) -> ResumeAnalysis | None:
-    """Fetch a ResumeAnalysis by id, or None if it does not exist."""
+    """Fetch a ResumeAnalysis by id, or None if it does not exist.
+    Ownership-blind on purpose - see get_analysis_for_user for the
+    ownership-checked equivalent, which any HTTP-facing caller should
+    use instead."""
     return db.get(ResumeAnalysis, analysis_id)
+
+
+def get_analysis_for_user(db: Session, analysis_id: uuid.UUID, *, user_id: uuid.UUID) -> ResumeAnalysis | None:
+    """Fetch a ResumeAnalysis by id, but only if it belongs to user_id -
+    returns None both when the analysis doesn't exist and when it exists
+    but belongs to someone else (the same "don't distinguish" policy used
+    throughout Phase 10B; see resume_repository.get_or_create_resume_for_parse).
+
+    Per this phase's requirement, ResumeAnalysis has no user_id column of
+    its own; ownership is derived through analysis.resume.user_id.
+    """
+    analysis = db.get(ResumeAnalysis, analysis_id, options=[selectinload(ResumeAnalysis.resume)])
+    if analysis is None or analysis.resume.user_id != user_id:
+        return None
+    return analysis
 
 
 # --------------------------------------------------------------------------
@@ -240,13 +260,31 @@ def load_analysis(db: Session, analysis_id: uuid.UUID) -> PersistedAnalysisResul
     )
 
 
+def load_analysis_for_user(
+    db: Session, analysis_id: uuid.UUID, *, user_id: uuid.UUID
+) -> PersistedAnalysisResult | None:
+    """Ownership-checked load_analysis: None if the analysis doesn't
+    exist or isn't owned (via its Resume) by user_id."""
+    if get_analysis_for_user(db, analysis_id, user_id=user_id) is None:
+        return None
+    return load_analysis(db, analysis_id)
+
+
 # --------------------------------------------------------------------------
 # History
 # --------------------------------------------------------------------------
 
 
-def list_analyses_for_resume(db: Session, resume_id: uuid.UUID) -> list[ResumeAnalysis]:
-    """All analyses for a resume, newest first."""
+def list_analyses_for_resume(db: Session, resume_id: uuid.UUID, *, user_id: uuid.UUID) -> list[ResumeAnalysis]:
+    """All analyses for a resume, newest first - but only if that resume
+    is owned by user_id. Otherwise an empty list, exactly as if no
+    analyses existed, so a caller can never learn anything about a
+    resume_id it doesn't own (including whether it exists at all) just
+    by requesting its history.
+    """
+    resume = db.get(Resume, resume_id)
+    if resume is None or resume.user_id != user_id:
+        return []
     return (
         db.query(ResumeAnalysis)
         .filter(ResumeAnalysis.resume_id == resume_id)
@@ -255,8 +293,14 @@ def list_analyses_for_resume(db: Session, resume_id: uuid.UUID) -> list[ResumeAn
     )
 
 
-def list_analyses_for_job_description(db: Session, job_description_id: uuid.UUID) -> list[ResumeAnalysis]:
-    """All analyses for a job description, newest first."""
+def list_analyses_for_job_description(
+    db: Session, job_description_id: uuid.UUID, *, user_id: uuid.UUID
+) -> list[ResumeAnalysis]:
+    """All analyses for a job description, newest first - ownership-gated
+    the same way as list_analyses_for_resume, above."""
+    job_description = db.get(JobDescription, job_description_id)
+    if job_description is None or job_description.user_id != user_id:
+        return []
     return (
         db.query(ResumeAnalysis)
         .filter(ResumeAnalysis.job_description_id == job_description_id)

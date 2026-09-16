@@ -2,9 +2,11 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { expect, test } from "@playwright/test";
 
-// Phase 9D: drives the real UI through the whole upload -> parse resume
-// -> analyze job description -> match flow, exactly as a user would, and
-// checks that:
+// Phase 9D/10B: drives the real UI through registering + logging in
+// (Phase 10B added the AuthGate this now goes through first, since every
+// resume/JD/match endpoint requires authentication), then the whole
+// upload -> parse resume -> analyze job description -> match flow,
+// exactly as a user would, and checks that:
 // - the database ids (resume/JD/analysis) actually reach the page state
 //   (exposed as invisible data-* attributes on the main container - see
 //   HomePage.tsx - purely for this kind of assertion, not rendered),
@@ -12,9 +14,9 @@ import { expect, test } from "@playwright/test";
 // - nothing logs a console error and no network request fails.
 //
 // Requires the backend (with PostgreSQL reachable) and the Vite dev
-// server to already be running - see the Phase 9D report for exact
-// commands. This suite creates real database rows; the report documents
-// the manual cleanup performed after the run.
+// server to already be running - see the Phase 9D/10B reports for exact
+// commands. This suite creates a real user + database rows; the report
+// documents the manual cleanup performed after the run.
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const RESUME_PDF_PATH = path.join(__dirname, "fixtures", "resume.pdf");
@@ -53,6 +55,15 @@ test("full upload -> parse -> analyze -> match workflow carries ids and saves th
   });
 
   await page.goto("/");
+
+  // --- 0. Register + log in (Phase 10B's AuthGate) ---
+  const testEmail = `e2e-${Date.now()}-${Math.floor(Math.random() * 100000)}@example.com`;
+  const testPassword = "s3cur3-password";
+  await page.getByRole("button", { name: "Need an account? Register" }).click();
+  await page.getByLabel("Email").fill(testEmail);
+  await page.getByLabel("Password").fill(testPassword);
+  await page.getByRole("button", { name: "Register & Log In" }).click();
+  await expect(page.getByRole("heading", { name: "1. Upload Resume" })).toBeVisible();
 
   // --- 1. Upload the resume PDF ---
   // resume_id is captured inside ResumeUpload's own state right after

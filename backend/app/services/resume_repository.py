@@ -58,9 +58,18 @@ class ResumeNotFoundError(Exception):
 # --------------------------------------------------------------------------
 
 
-def create_resume(db: Session, *, original_filename: str, extracted_text: str) -> Resume:
-    """Create and persist a new, otherwise-empty Resume row."""
-    resume = Resume(original_filename=original_filename, extracted_text=extracted_text)
+def create_resume(
+    db: Session, *, original_filename: str, extracted_text: str, user_id: uuid.UUID | None = None
+) -> Resume:
+    """Create and persist a new, otherwise-empty Resume row.
+
+    user_id defaults to None only for callers that don't have an
+    authenticated user in scope (some direct repository-level tests, and
+    the resume_id-less case of get_or_create_resume_for_parse - though as
+    of Phase 10B every real HTTP caller of this function passes a real
+    user_id, since POST /api/resume/upload now requires authentication).
+    """
+    resume = Resume(original_filename=original_filename, extracted_text=extracted_text, user_id=user_id)
     db.add(resume)
     try:
         db.commit()
@@ -72,21 +81,38 @@ def create_resume(db: Session, *, original_filename: str, extracted_text: str) -
 
 
 def get_resume(db: Session, resume_id: uuid.UUID) -> Resume | None:
-    """Fetch a Resume by id, or None if it does not exist."""
+    """Fetch a Resume by id, or None if it does not exist. Ownership-blind
+    on purpose - callers that need an ownership check (any HTTP-facing
+    caller) must compare .user_id themselves or use
+    get_or_create_resume_for_parse, which does that for the parse flow.
+    """
     return db.get(Resume, resume_id)
 
 
-def get_or_create_resume_for_parse(db: Session, *, resume_id: uuid.UUID | None, text: str) -> Resume:
-    """Resolve the Resume that a parse call should attach its data to.
+def get_or_create_resume_for_parse(
+    db: Session, *, resume_id: uuid.UUID | None, text: str, user_id: uuid.UUID
+) -> Resume:
+    """Resolve the Resume that a parse call should attach its data to,
+    enforcing ownership throughout.
 
-    - resume_id given: fetch it (raising ResumeNotFoundError if missing),
+    - resume_id given: fetch it and verify resume.user_id == user_id,
       keeping its extracted_text in sync with the text actually parsed.
-    - resume_id not given: create a fresh Resume from this text, since
+      A resume that doesn't exist and one that exists but belongs to
+      someone else raise the exact same ResumeNotFoundError with the same
+      message - a deliberate, consistent policy (see Phase 10B report)
+      so a caller can never learn "that id exists, it's just not yours"
+      by comparing error responses.
+    - resume_id not given: create a fresh Resume owned by user_id, since
       there was no prior upload to attach to.
+
+    user_id is never taken from anywhere but the caller's own verified
+    identity (the router passes current_user.id from get_current_user) -
+    never from request body data - so a client cannot claim or reassign
+    ownership by supplying a different id.
     """
     if resume_id is not None:
         resume = get_resume(db, resume_id)
-        if resume is None:
+        if resume is None or resume.user_id != user_id:
             raise ResumeNotFoundError(f"No resume found with id {resume_id}.")
         if resume.extracted_text != text:
             resume.extracted_text = text
@@ -98,7 +124,7 @@ def get_or_create_resume_for_parse(db: Session, *, resume_id: uuid.UUID | None, 
             db.refresh(resume)
         return resume
 
-    return create_resume(db, original_filename=UNLINKED_PARSE_FILENAME, extracted_text=text)
+    return create_resume(db, original_filename=UNLINKED_PARSE_FILENAME, extracted_text=text, user_id=user_id)
 
 
 # --------------------------------------------------------------------------

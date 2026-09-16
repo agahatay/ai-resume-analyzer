@@ -83,9 +83,9 @@ def _make_match_response(**overrides) -> ResumeMatchResponse:
     return ResumeMatchResponse(**defaults)
 
 
-def _make_resume_and_jd(db_session) -> tuple[Resume, JobDescription]:
-    resume = Resume(original_filename="a.pdf", extracted_text="resume text")
-    jd = JobDescription(raw_text="jd text")
+def _make_resume_and_jd(db_session, user_id=None) -> tuple[Resume, JobDescription]:
+    resume = Resume(original_filename="a.pdf", extracted_text="resume text", user_id=user_id)
+    jd = JobDescription(raw_text="jd text", user_id=user_id)
     db_session.add_all([resume, jd])
     db_session.flush()
     return resume, jd
@@ -370,29 +370,60 @@ def _make_analysis_at(db_session, resume, jd, when: datetime) -> ResumeAnalysis:
     return analysis
 
 
-def test_list_analyses_for_resume_ordered_newest_first(db_session):
-    resume, jd = _make_resume_and_jd(db_session)
+def test_list_analyses_for_resume_ordered_newest_first(db_session, make_db_user):
+    owner = make_db_user()
+    resume, jd = _make_resume_and_jd(db_session, user_id=owner.id)
     base = datetime(2024, 1, 1, tzinfo=timezone.utc)
     oldest = _make_analysis_at(db_session, resume, jd, base)
     middle = _make_analysis_at(db_session, resume, jd, base + timedelta(hours=1))
     newest = _make_analysis_at(db_session, resume, jd, base + timedelta(hours=2))
 
-    results = analysis_repository.list_analyses_for_resume(db_session, resume.id)
+    results = analysis_repository.list_analyses_for_resume(db_session, resume.id, user_id=owner.id)
 
     assert [a.id for a in results] == [newest.id, middle.id, oldest.id]
 
 
-def test_list_analyses_for_job_description_ordered_newest_first(db_session):
-    resume, jd = _make_resume_and_jd(db_session)
+def test_list_analyses_for_job_description_ordered_newest_first(db_session, make_db_user):
+    owner = make_db_user()
+    resume, jd = _make_resume_and_jd(db_session, user_id=owner.id)
     base = datetime(2024, 1, 1, tzinfo=timezone.utc)
     oldest = _make_analysis_at(db_session, resume, jd, base)
     newest = _make_analysis_at(db_session, resume, jd, base + timedelta(hours=1))
 
-    results = analysis_repository.list_analyses_for_job_description(db_session, jd.id)
+    results = analysis_repository.list_analyses_for_job_description(db_session, jd.id, user_id=owner.id)
 
     assert [a.id for a in results] == [newest.id, oldest.id]
 
 
-def test_list_analyses_for_resume_empty_when_none_exist(db_session):
-    resume, _jd = _make_resume_and_jd(db_session)
-    assert analysis_repository.list_analyses_for_resume(db_session, resume.id) == []
+def test_list_analyses_for_resume_empty_when_none_exist(db_session, make_db_user):
+    owner = make_db_user()
+    resume, _jd = _make_resume_and_jd(db_session, user_id=owner.id)
+    assert analysis_repository.list_analyses_for_resume(db_session, resume.id, user_id=owner.id) == []
+
+
+def test_list_analyses_for_resume_empty_for_non_owner(db_session, make_db_user):
+    owner = make_db_user()
+    other_user = make_db_user()
+    resume, jd = _make_resume_and_jd(db_session, user_id=owner.id)
+    _make_analysis_at(db_session, resume, jd, datetime(2024, 1, 1, tzinfo=timezone.utc))
+
+    # A different user's user_id must see nothing for this resume, even
+    # though analyses genuinely exist for it.
+    assert analysis_repository.list_analyses_for_resume(db_session, resume.id, user_id=other_user.id) == []
+
+
+def test_get_analysis_for_user_rejects_non_owner(db_session, make_db_user):
+    owner = make_db_user()
+    other_user = make_db_user()
+    resume, jd = _make_resume_and_jd(db_session, user_id=owner.id)
+    analysis = analysis_repository.create_analysis(
+        db_session,
+        resume_id=resume.id,
+        job_description_id=jd.id,
+        deterministic_score=80.0,
+        semantic_score=70.0,
+        combined_score=77.0,
+    )
+
+    assert analysis_repository.get_analysis_for_user(db_session, analysis.id, user_id=owner.id) is not None
+    assert analysis_repository.get_analysis_for_user(db_session, analysis.id, user_id=other_user.id) is None

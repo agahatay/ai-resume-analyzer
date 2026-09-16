@@ -92,23 +92,45 @@ def test_get_resume_returns_none_for_unknown_id(db_session):
 # --------------------------------------------------------------------------
 
 
-def test_get_or_create_creates_new_resume_when_no_id_given(db_session):
-    resume = resume_repository.get_or_create_resume_for_parse(db_session, resume_id=None, text="some text")
+def test_get_or_create_creates_new_resume_when_no_id_given(db_session, make_db_user):
+    user = make_db_user()
+    resume = resume_repository.get_or_create_resume_for_parse(
+        db_session, resume_id=None, text="some text", user_id=user.id
+    )
     assert resume.id is not None
     assert resume.extracted_text == "some text"
     assert resume.original_filename == resume_repository.UNLINKED_PARSE_FILENAME
+    assert resume.user_id == user.id
 
 
-def test_get_or_create_raises_for_unknown_resume_id(db_session):
+def test_get_or_create_raises_for_unknown_resume_id(db_session, make_db_user):
+    user = make_db_user()
     with pytest.raises(resume_repository.ResumeNotFoundError):
-        resume_repository.get_or_create_resume_for_parse(db_session, resume_id=uuid.uuid4(), text="x")
+        resume_repository.get_or_create_resume_for_parse(db_session, resume_id=uuid.uuid4(), text="x", user_id=user.id)
 
 
-def test_get_or_create_returns_existing_and_syncs_text(db_session):
-    resume = resume_repository.create_resume(db_session, original_filename="a.pdf", extracted_text="old text")
-    fetched = resume_repository.get_or_create_resume_for_parse(db_session, resume_id=resume.id, text="new text")
+def test_get_or_create_returns_existing_and_syncs_text(db_session, make_db_user):
+    user = make_db_user()
+    resume = resume_repository.create_resume(
+        db_session, original_filename="a.pdf", extracted_text="old text", user_id=user.id
+    )
+    fetched = resume_repository.get_or_create_resume_for_parse(
+        db_session, resume_id=resume.id, text="new text", user_id=user.id
+    )
     assert fetched.id == resume.id
     assert fetched.extracted_text == "new text"
+
+
+def test_get_or_create_raises_when_resume_belongs_to_different_user(db_session, make_db_user):
+    owner = make_db_user()
+    other_user = make_db_user()
+    resume = resume_repository.create_resume(
+        db_session, original_filename="a.pdf", extracted_text="text", user_id=owner.id
+    )
+    with pytest.raises(resume_repository.ResumeNotFoundError):
+        resume_repository.get_or_create_resume_for_parse(
+            db_session, resume_id=resume.id, text="new text", user_id=other_user.id
+        )
 
 
 # --------------------------------------------------------------------------

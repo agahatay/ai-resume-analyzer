@@ -1,8 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 
+from app.api.deps import get_current_user
 from app.core.config import get_settings
 from app.core.database import get_db
+from app.models.user import User
 from app.schemas.match import ResumeMatchRequest, ResumeMatchResponse
 from app.schemas.resume import ParsedResume, ResumeParseRequest, ResumeUploadResponse
 from app.services.pdf_service import (
@@ -28,7 +30,11 @@ settings = get_settings()
 
 
 @router.post("/upload", response_model=ResumeUploadResponse)
-async def upload_resume(file: UploadFile, db: Session = Depends(get_db)) -> ResumeUploadResponse:
+async def upload_resume(
+    file: UploadFile,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> ResumeUploadResponse:
     if file.content_type != "application/pdf":
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -70,7 +76,9 @@ async def upload_resume(file: UploadFile, db: Session = Depends(get_db)) -> Resu
         ) from exc
 
     try:
-        resume = create_resume(db, original_filename=file.filename, extracted_text=extracted_text)
+        resume = create_resume(
+            db, original_filename=file.filename, extracted_text=extracted_text, user_id=current_user.id
+        )
     except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -86,7 +94,11 @@ async def upload_resume(file: UploadFile, db: Session = Depends(get_db)) -> Resu
 
 
 @router.post("/parse", response_model=ParsedResume)
-async def parse_resume_endpoint(payload: ResumeParseRequest, db: Session = Depends(get_db)) -> ParsedResume:
+async def parse_resume_endpoint(
+    payload: ResumeParseRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> ParsedResume:
     try:
         parsed = parse_resume(payload.text)
     except Exception as exc:
@@ -95,8 +107,16 @@ async def parse_resume_endpoint(payload: ResumeParseRequest, db: Session = Depen
             detail="Failed to parse resume text.",
         ) from exc
 
+    # Ownership is derived only from current_user (the verified JWT
+    # subject) - payload.resume_id says *which* resume to update, never
+    # *whose* it is. get_or_create_resume_for_parse raises
+    # ResumeNotFoundError (-> 404 below) both when resume_id doesn't exist
+    # and when it belongs to a different user, so a caller can't tell
+    # those two cases apart.
     try:
-        resume = get_or_create_resume_for_parse(db, resume_id=payload.resume_id, text=payload.text)
+        resume = get_or_create_resume_for_parse(
+            db, resume_id=payload.resume_id, text=payload.text, user_id=current_user.id
+        )
     except ResumeNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     except Exception as exc:
@@ -118,7 +138,11 @@ async def parse_resume_endpoint(payload: ResumeParseRequest, db: Session = Depen
 
 
 @router.post("/match", response_model=ResumeMatchResponse)
-async def match_resume_endpoint(payload: ResumeMatchRequest, db: Session = Depends(get_db)) -> ResumeMatchResponse:
+async def match_resume_endpoint(
+    payload: ResumeMatchRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> ResumeMatchResponse:
     try:
         result = match_resume_to_job(payload.resume, payload.job_description)
     except Exception as exc:
@@ -127,20 +151,29 @@ async def match_resume_endpoint(payload: ResumeMatchRequest, db: Session = Depen
             detail="Failed to match resume against job description.",
         ) from exc
 
-    # Phase 9C-3: persist this match as a new analysis only when both ids
-    # are available. Neither id being present is the normal case for a
+    # Persist this match as a new analysis only when both ids are
+    # available. Neither id being present is the normal case for a
     # standalone match call (e.g. pasted resume/JD text with no prior
-    # upload or parse) - existing behavior is preserved unchanged, and no
-    # Resume/JobDescription records are invented from a missing id.
+    # upload or parse) - that existing behavior is preserved unchanged,
+    # and no Resume/JobDescription records are invented from a missing
+    # id. When ids ARE present, ownership is verified against
+    # current_user.id (the verified JWT subject, never anything from the
+    # request body) for BOTH the resume and the job description before
+    # matching is allowed to persist - a resume_id/job_description_id
+    # that exists but belongs to someone else gets the identical 404 a
+    # nonexistent id would, so cross-user access can't be distinguished
+    # from "not found" by probing.
     resume_id = payload.resume.resume_id
     job_description_id = payload.job_description.job_description_id
     if resume_id is not None and job_description_id is not None:
-        if get_resume(db, resume_id) is None:
+        resume = get_resume(db, resume_id)
+        if resume is None or resume.user_id != current_user.id:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"No resume found with id {resume_id}.",
             )
-        if get_job_description(db, job_description_id) is None:
+        job_description = get_job_description(db, job_description_id)
+        if job_description is None or job_description.user_id != current_user.id:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"No job description found with id {job_description_id}.",
