@@ -3,18 +3,22 @@
 No test suite existed prior to this phase; these smoke tests confirm the
 app still starts and its pre-existing routes still respond correctly after
 wiring in the database module (new imports in app.main -> app.api.health ->
-app.core.database -> app.core.config), and, as of Phase 9C-1, after wiring
-real PostgreSQL persistence into POST /api/resume/parse and
-POST /api/resume/upload.
+app.core.database -> app.core.config), and, as of Phase 9C-1/9C-2, after
+wiring real PostgreSQL persistence into POST /api/resume/parse,
+POST /api/resume/upload, and POST /api/job-description/parse.
 """
 
 
-def test_job_description_parse_endpoint_still_works(client):
+def test_job_description_parse_endpoint_still_works(client, cleanup_job_descriptions):
     response = client.post(
         "/api/job-description/parse",
         json={"text": "We need a Python developer with 3 years of experience in FastAPI."},
     )
     assert response.status_code == 200
+    # Phase 9C-2: this endpoint now persists a JobDescription row as a side
+    # effect (see tests/test_job_description_api_persistence.py for
+    # dedicated coverage) - clean it up so this regression test stays inert.
+    cleanup_job_descriptions.append(response.json()["job_description_id"])
 
 
 def test_resume_parse_endpoint_still_works(client, cleanup_resumes):

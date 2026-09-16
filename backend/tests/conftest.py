@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.core.database import SessionLocal, engine
 from app.main import app
+from app.models.job_description import JobDescription
 from app.models.resume import Resume
 
 
@@ -54,6 +55,26 @@ def cleanup_resumes():
             resume = session.get(Resume, resume_id)
             if resume is not None:
                 session.delete(resume)
+        session.commit()
+    finally:
+        session.close()
+
+
+@pytest.fixture()
+def cleanup_job_descriptions():
+    """Same purpose as cleanup_resumes, for JobDescription rows created by
+    tests going through the live HTTP API (POST /api/job-description/parse).
+    """
+    created_ids: list[uuid.UUID] = []
+    yield created_ids
+    if not created_ids:
+        return
+    session = SessionLocal()
+    try:
+        for job_description_id in created_ids:
+            job_description = session.get(JobDescription, job_description_id)
+            if job_description is not None:
+                session.delete(job_description)
         session.commit()
     finally:
         session.close()

@@ -36,8 +36,17 @@ class JobDescription(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     raw_text: Mapped[str] = mapped_column(Text, nullable=False)
     job_title: Mapped[str | None] = mapped_column(String(255), nullable=True, index=True)
 
+    # order_by=<pk> (Phase 9C-2): without it, PostgreSQL does not guarantee
+    # row order for a plain SELECT, which would make job description
+    # reconstruction (see job_description_repository.load_parsed_job_description)
+    # non-deterministic. Query-ordering hint only - no column/table/migration
+    # change, mirroring the same fix applied to Resume's child relationships
+    # in Phase 9C-1.
     requirements: Mapped[list["JobRequirement"]] = relationship(
-        back_populates="job_description", cascade="all, delete-orphan", passive_deletes=True
+        back_populates="job_description",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        order_by="JobRequirement.id",
     )
     analyses: Mapped[list["ResumeAnalysis"]] = relationship(
         back_populates="job_description", cascade="all, delete-orphan", passive_deletes=True
