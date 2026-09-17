@@ -307,3 +307,32 @@ def list_analyses_for_job_description(
         .order_by(ResumeAnalysis.created_at.desc())
         .all()
     )
+
+
+def list_analyses_for_user(
+    db: Session, *, user_id: uuid.UUID, page: int = 1, page_size: int = 10
+) -> tuple[list[ResumeAnalysis], int]:
+    """A user's full analysis history (Phase 11) - across every resume
+    and job description they own, newest first, paginated.
+
+    Ownership is enforced at the database query level: the join to Resume
+    and the ``Resume.user_id == user_id`` filter both happen in the SQL
+    itself, not via a Python-side post-filter, so a caller can never see
+    another user's analyses by paging past their own. (ResumeAnalysis has
+    no user_id column of its own - see get_analysis_for_user's docstring
+    - so Resume is the only table that can carry that filter.)
+
+    Returns (page_of_analyses, total_count) - total_count is the full
+    count across all pages, for the caller to compute total_pages.
+    """
+    base_query = db.query(ResumeAnalysis).join(Resume, ResumeAnalysis.resume_id == Resume.id).filter(
+        Resume.user_id == user_id
+    )
+    total = base_query.count()
+    items = (
+        base_query.order_by(ResumeAnalysis.created_at.desc(), ResumeAnalysis.id.desc())
+        .offset((page - 1) * page_size)
+        .limit(page_size)
+        .all()
+    )
+    return items, total

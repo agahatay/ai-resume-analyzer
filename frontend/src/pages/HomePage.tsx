@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import "../components/dashboard/dashboard.css";
 import "../components/ui/ui.css";
 import AppHeader from "../components/layout/AppHeader";
+import NavBar from "../components/layout/NavBar";
+import type { AppView } from "../components/layout/NavBar";
 import WorkflowSteps from "../components/layout/WorkflowSteps";
 import type { WorkflowStep } from "../components/layout/WorkflowSteps";
 import StatusBadge from "../components/StatusBadge";
@@ -9,13 +11,16 @@ import ResumeUpload from "../components/ResumeUpload";
 import JobDescriptionInput from "../components/JobDescriptionInput";
 import MatchSection from "../components/MatchSection";
 import { getHealth } from "../services/healthService";
-import { useAuth } from "../context/AuthContext";
 import type { ParsedResume } from "../types/resume";
 import type { ParsedJobDescription } from "../types/jobDescription";
 import type { ResumeMatchResponse } from "../types/match";
 
-function HomePage() {
-  const { user, logout } = useAuth();
+interface HomePageProps {
+  activeView: AppView;
+  onNavigate: (view: AppView) => void;
+}
+
+function HomePage({ activeView, onNavigate }: HomePageProps) {
   const [status, setStatus] = useState<string>("checking...");
   const [parsedResume, setParsedResume] = useState<ParsedResume | null>(null);
   const [parsedJobDescription, setParsedJobDescription] = useState<ParsedJobDescription | null>(
@@ -69,13 +74,6 @@ function HomePage() {
     setResetCount((count) => count + 1);
   }
 
-  function handleLogOut() {
-    // AuthGate (see App.tsx) re-renders the login form as soon as
-    // AuthContext's status flips to "unauthenticated" - no local state
-    // cleanup needed here beyond that.
-    logout();
-  }
-
   const hasInputData = parsedResume !== null || parsedJobDescription !== null;
 
   const steps: WorkflowStep[] = [
@@ -98,20 +96,13 @@ function HomePage() {
   return (
     <div className="app-shell">
       <AppHeader>
-        <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
-          {user && (
-            <span className="ui-field-hint" style={{ marginRight: "0.2rem" }}>
-              {user.full_name ?? user.email}
-            </span>
-          )}
+        <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", flexWrap: "wrap" }}>
           {hasInputData && (
             <button className="ui-button ui-button-secondary" onClick={handleStartOver}>
               Start Over
             </button>
           )}
-          <button className="ui-button ui-button-ghost" onClick={handleLogOut}>
-            Log Out
-          </button>
+          <NavBar active={activeView} onNavigate={onNavigate} />
         </div>
       </AppHeader>
 
