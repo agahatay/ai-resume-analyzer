@@ -1,0 +1,76 @@
+# Phase 13B: production-oriented Compose file. Runs prebuilt, tagged images
+# (see README's "Image tagging" section) instead of building from source,
+# forces production-safe environment values, and never publishes the
+# database port to the host. This file is for running the production images
+# locally to validate them - it does not deploy anywhere by itself.
+
+x-postgres-healthcheck: &postgres-healthcheck
+  test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-ai_resume_analyzer}"]
+  interval: 5s
+  timeout: 5s
+  retries: 10
+  start_period: 10s
+
+services:
+  postgres:
+    image: postgres:18
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-ai_resume_analyzer}
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD must be set - see README Secrets section}
+    volumes:
+      - postgres_data:/var/lib/postgresql
+    # No host port published - only the backend service reaches Postgres,
+    # over the internal compose network via the "postgres" hostname.
+    healthcheck: *postgres-healthcheck
+
+  backend:
+    image: ai-resume-analyzer-backend:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:-ai_resume_analyzer}
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD must be set - see README Secrets section}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:?JWT_SECRET_KEY must be set - see README Secrets section}
+      JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-30}
+      SEMANTIC_MODEL_NAME: ${SEMANTIC_MODEL_NAME:-sentence-transformers/all-MiniLM-L6-v2}
+      SEMANTIC_SIMILARITY_THRESHOLD: ${SEMANTIC_SIMILARITY_THRESHOLD:-0.3}
+      CORS_ORIGINS: ${CORS_ORIGINS:?CORS_ORIGINS must be set to the real frontend origin - see README Secrets section}
+      ENVIRONMENT: production
+      DEBUG: "false"
+    volumes:
+      - hf_cache:/home/appuser/.cache/huggingface
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  frontend:
+    image: ai-resume-analyzer-frontend:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "${FRONTEND_PORT:-8080}:8080"
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--spider", "http://127.0.0.1:8080/"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
+volumes:
+  postgres_data:
+  hf_cache:
