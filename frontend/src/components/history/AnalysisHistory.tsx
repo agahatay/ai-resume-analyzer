@@ -31,6 +31,10 @@ function AnalysisHistory({ onViewDetails, onAnalyzeResume }: AnalysisHistoryProp
 
   useEffect(() => {
     let cancelled = false;
+    // Resets the view back to "loading" on every page change, not just on
+    // mount (the initial state is already "loading") - intentional, and
+    // safe under React 18's automatic batching of same-tick setState calls.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setState("loading");
     setErrorMessage("");
 
