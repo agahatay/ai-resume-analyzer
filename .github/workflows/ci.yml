@@ -270,7 +270,9 @@ jobs:
           context: ./backend
           push: false
           load: false
-          tags: ai-resume-analyzer-backend:ci
+          tags: |
+            ai-resume-analyzer-backend:ci
+            ai-resume-analyzer-backend:${{ github.sha }}
           cache-from: type=gha,scope=backend
           cache-to: type=gha,mode=max,scope=backend
 
@@ -280,7 +282,9 @@ jobs:
           context: ./frontend
           push: false
           load: false
-          tags: ai-resume-analyzer-frontend:ci
+          tags: |
+            ai-resume-analyzer-frontend:ci
+            ai-resume-analyzer-frontend:${{ github.sha }}
           cache-from: type=gha,scope=frontend
           cache-to: type=gha,mode=max,scope=frontend
 
