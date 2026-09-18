@@ -1,5 +1,7 @@
 # AI Resume Analyzer
 
+[![CI](https://github.com/agahatay/ai-resume-analyzer/actions/workflows/ci.yml/badge.svg)](https://github.com/agahatay/ai-resume-analyzer/actions/workflows/ci.yml)
+
 ## Structure
 
 - `backend/` — FastAPI application
@@ -47,3 +49,12 @@ docker compose down -v       # stop containers AND delete the postgres_data volu
 - The backend container runs `alembic upgrade head` on every startup (before uvicorn starts) so the schema is always current - there is no `Base.metadata.create_all()` anywhere.
 - The `postgres_data` and `hf_cache` named volumes persist database data and the downloaded sentence-transformers model across `docker compose down` / `up` and restarts. Only `down -v` removes them.
 - All secrets (`DB_PASSWORD`, `JWT_SECRET_KEY`) come from your local `.env` (gitignored), never from `docker-compose.yml` or the Dockerfiles.
+
+## CI (Phase 13A)
+
+GitHub Actions (`.github/workflows/ci.yml`) runs on every pull request and on pushes to `main`/`master`, as four jobs:
+
+- **Backend** — installs `backend/requirements.txt`, runs against a real PostgreSQL 18 service container, applies migrations (`alembic upgrade head`), checks the models and migration history haven't drifted (`alembic check`), then runs the full `pytest` suite. `JWT_SECRET_KEY` is generated fresh inside the job (never checked in); the database password is a fixed CI-only throwaway value for an ephemeral, network-isolated container. No `.env` file (local or root) is used.
+- **Frontend** — `npm ci`, `tsc -b`, `npm run build`, and `npm run lint` (ESLint, added in this phase — see `frontend/eslint.config.js`).
+- **E2E** — boots a real PostgreSQL + FastAPI backend + a production-built, previewed frontend, then runs the Playwright suite in `frontend/e2e/` end to end: register, login, resume upload, resume parsing, job description parsing, matching, and analysis history/detail. Only runs once the backend and frontend jobs pass. On failure, the Playwright report, screenshots/videos, and server logs are uploaded as workflow artifacts.
+- **Docker** — validates `docker compose config` and builds the backend and frontend images (with GitHub Actions layer caching, since the backend image includes torch/sentence-transformers) to catch Dockerfile/compose regressions, and confirms the PostgreSQL container starts and reports healthy. No images are pushed anywhere.
