@@ -23,15 +23,21 @@ ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
 RUN npm run build
 
 # ---- production stage ----
-FROM nginx:1.27-alpine AS production
+# nginxinc/nginx-unprivileged, not plain nginx: the official nginx image's
+# master process runs as root (needed to bind port 80); this is the same
+# nginx build pre-configured to run entirely as an unprivileged user on
+# port 8080 instead, so the container has no root process at all - the
+# backend already runs as "appuser" and this closes the one remaining
+# root-process gap in the stack.
+FROM nginxinc/nginx-unprivileged:1.27-alpine AS production
 
 COPY --from=build /app/dist /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-EXPOSE 80
+EXPOSE 8080
 
 # 127.0.0.1, not localhost: this Alpine image's wget resolves "localhost"
-# to ::1 first, and nginx's "listen 80;" only binds the IPv4 wildcard, so
+# to ::1 first, and nginx's "listen 8080;" only binds the IPv4 wildcard, so
 # "localhost" here caused a false-negative "connection refused".
 HEALTHCHECK --interval=10s --timeout=5s --start-period=5s --retries=5 \
-    CMD wget --quiet --spider http://127.0.0.1/ || exit 1
+    CMD wget --quiet --spider http://127.0.0.1:8080/ || exit 1
