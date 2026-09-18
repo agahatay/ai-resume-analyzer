@@ -339,10 +339,26 @@ def test_transaction_rollback_leaves_no_partial_analysis_rows(db_session, monkey
             db_session, resume_id=resume.id, job_description_id=jd.id, match_result=_make_match_response()
         )
 
-    # No ResumeAnalysis, no skill results, no summary must survive.
+    # No ResumeAnalysis, no skill results, no summary must survive. Scoped to
+    # this resume/jd pair via a join on ResumeAnalysis - an unscoped,
+    # whole-table count() would wrongly fail against a database that already
+    # has unrelated analyses from other tests/manual verification (this
+    # table is real PostgreSQL, not an isolated in-memory DB).
     assert db_session.query(ResumeAnalysis).filter_by(resume_id=resume.id, job_description_id=jd.id).count() == 0
-    assert db_session.query(AnalysisSkillResult).count() == 0
-    assert db_session.query(AnalysisSummary).count() == 0
+    assert (
+        db_session.query(AnalysisSkillResult)
+        .join(ResumeAnalysis)
+        .filter(ResumeAnalysis.resume_id == resume.id, ResumeAnalysis.job_description_id == jd.id)
+        .count()
+        == 0
+    )
+    assert (
+        db_session.query(AnalysisSummary)
+        .join(ResumeAnalysis)
+        .filter(ResumeAnalysis.resume_id == resume.id, ResumeAnalysis.job_description_id == jd.id)
+        .count()
+        == 0
+    )
 
 
 # --------------------------------------------------------------------------

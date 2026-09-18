@@ -29,6 +29,8 @@ positives, since a wrong ✓ is more misleading to a reader than a real match
 merely showing a lower similarity number they can still see.
 """
 
+import threading
+
 import numpy as np
 from sentence_transformers import SentenceTransformer
 
@@ -38,13 +40,26 @@ from app.schemas.match import SemanticMatchItem, SemanticMatchResult
 from app.schemas.resume import ParsedResume
 
 _MODEL_CACHE: dict[str, SentenceTransformer] = {}
+# Phase 12: compute_semantic_match now runs off the request's event loop
+# (see app/api/resume.py), in FastAPI's threadpool - so two concurrent
+# requests can genuinely call _get_model() for the same not-yet-cached
+# model_name from different threads at once. This lock makes the
+# check-load-store sequence atomic, so the model is still loaded at most
+# once per model name (same guarantee as before, now actually enforced
+# under concurrency) instead of racing to load it twice.
+_MODEL_CACHE_LOCK = threading.Lock()
 
 
 def _get_model(model_name: str) -> SentenceTransformer:
     """Load a SentenceTransformer once per model name and reuse it. Not an
     lru_cache so the cache is introspectable/clearable in tests if needed."""
-    if model_name not in _MODEL_CACHE:
-        _MODEL_CACHE[model_name] = SentenceTransformer(model_name)
+    if model_name in _MODEL_CACHE:
+        return _MODEL_CACHE[model_name]
+    with _MODEL_CACHE_LOCK:
+        # Re-check: another thread may have finished loading it while this
+        # one was waiting for the lock.
+        if model_name not in _MODEL_CACHE:
+            _MODEL_CACHE[model_name] = SentenceTransformer(model_name)
     return _MODEL_CACHE[model_name]
 
 

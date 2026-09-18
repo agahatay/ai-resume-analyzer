@@ -66,6 +66,16 @@ def test_full_upload_parse_match_workflow_persists_exactly_one_of_each(
 ):
     _user_id, headers = auth_headers_factory()
 
+    # Baseline counts, not assumed-zero absolutes: this runs against a real,
+    # long-lived PostgreSQL database that may already hold unrelated rows
+    # from other tests or manual verification - the workflow below must add
+    # exactly one of each on top of whatever was already there.
+    session = SessionLocal()
+    try:
+        baseline = _count_rows(session)
+    finally:
+        session.close()
+
     # 1. Upload the real PDF.
     upload_resp = client.post(
         "/api/resume/upload",
@@ -105,12 +115,16 @@ def test_full_upload_parse_match_workflow_persists_exactly_one_of_each(
     analysis_id = match_body["analysis_id"]
     assert analysis_id is not None
 
-    # Database must now contain exactly one resume, one job description,
-    # and one analysis - nothing duplicated, nothing invented.
+    # Exactly one resume, one job description, and one analysis were added
+    # on top of the baseline - nothing duplicated, nothing invented.
     session = SessionLocal()
     try:
         counts = _count_rows(session)
-        assert counts == {"resumes": 1, "job_descriptions": 1, "analyses": 1}
+        assert counts == {
+            "resumes": baseline["resumes"] + 1,
+            "job_descriptions": baseline["job_descriptions"] + 1,
+            "analyses": baseline["analyses"] + 1,
+        }
 
         resume_row = session.get(Resume, resume_id)
         assert resume_row is not None
@@ -143,9 +157,14 @@ def test_full_upload_parse_match_workflow_persists_exactly_one_of_each(
     session = SessionLocal()
     try:
         counts = _count_rows(session)
-        # Resume and job description counts are unchanged - upload was
-        # not repeated, neither record was duplicated - but a second,
-        # independent analysis now exists alongside the first.
-        assert counts == {"resumes": 1, "job_descriptions": 1, "analyses": 2}
+        # Resume and job description counts are unchanged from the first
+        # assertion - upload was not repeated, neither record was
+        # duplicated - but a second, independent analysis now exists
+        # alongside the first.
+        assert counts == {
+            "resumes": baseline["resumes"] + 1,
+            "job_descriptions": baseline["job_descriptions"] + 1,
+            "analyses": baseline["analyses"] + 2,
+        }
     finally:
         session.close()

@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, status
+from fastapi.concurrency import run_in_threadpool
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
@@ -143,8 +144,14 @@ async def match_resume_endpoint(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> ResumeMatchResponse:
+    # match_resume_to_job is a synchronous call chain (deterministic scoring
+    # plus semantic_matcher's SentenceTransformer load/inference, which can
+    # take seconds to minutes on a cold model load) - run it in FastAPI's
+    # threadpool so it can't block this async endpoint's event loop and
+    # starve unrelated concurrent requests (including health checks). See
+    # tests/test_match_concurrency.py for the regression test.
     try:
-        result = match_resume_to_job(payload.resume, payload.job_description)
+        result = await run_in_threadpool(match_resume_to_job, payload.resume, payload.job_description)
     except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

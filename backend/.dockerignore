@@ -1,0 +1,20 @@
+.venv/
+__pycache__/
+**/__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Secrets - never baked into the image; runtime config comes from
+# docker-compose environment variables instead.
+.env
+.env.*
+
+tests/
+
+.git
+.gitignore
+*.md
