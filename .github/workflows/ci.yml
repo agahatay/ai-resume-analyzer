@@ -18,13 +18,13 @@ jobs:
       postgres:
         image: postgres:18
         env:
-          POSTGRES_DB: ai_resume_analyzer_test
+          POSTGRES_DB: ai_resume_analyzer
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: ci_test_password_only
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U postgres -d ai_resume_analyzer_test"
+          --health-cmd "pg_isready -U postgres -d ai_resume_analyzer"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
@@ -32,7 +32,11 @@ jobs:
     env:
       DB_HOST: localhost
       DB_PORT: 5432
-      DB_NAME: ai_resume_analyzer_test
+      # test_database.py::test_engine_targets_configured_database asserts
+      # the engine URL against Settings' literal defaults (localhost/5432/
+      # ai_resume_analyzer) rather than reading them back dynamically - so
+      # this job's DB_HOST/DB_PORT/DB_NAME must match those defaults exactly.
+      DB_NAME: ai_resume_analyzer
       DB_USER: postgres
       DB_PASSWORD: ci_test_password_only
       JWT_ALGORITHM: HS256
