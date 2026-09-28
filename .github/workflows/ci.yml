@@ -32,10 +32,6 @@ jobs:
     env:
       DB_HOST: localhost
       DB_PORT: 5432
-      # test_database.py::test_engine_targets_configured_database asserts
-      # the engine URL against Settings' literal defaults (localhost/5432/
-      # ai_resume_analyzer) rather than reading them back dynamically - so
-      # this job's DB_HOST/DB_PORT/DB_NAME must match those defaults exactly.
       DB_NAME: ai_resume_analyzer
       DB_USER: postgres
       DB_PASSWORD: ci_test_password_only

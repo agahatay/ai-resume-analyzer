@@ -37,7 +37,13 @@ engine = create_engine(
     settings.database_url,
     pool_pre_ping=True,
     future=True,
-    connect_args={"client_encoding": "utf8"},
+    # connect_timeout bounds libpq's own connection attempt. Without it, a
+    # DB_HOST that resolves more than one address (e.g. a hostname with both
+    # an IPv6 and IPv4 record, where only one actually has something
+    # listening) can leave libpq hanging for minutes on the dead candidate
+    # before falling back, instead of failing fast - see the investigation
+    # behind this change for measured timings.
+    connect_args={"client_encoding": "utf8", "connect_timeout": 5},
 )
 
 SessionLocal = sessionmaker(

@@ -6,6 +6,7 @@ whether a live PostgreSQL connection is available.
 from sqlalchemy.orm import DeclarativeBase, Session
 
 from app.core import database as db_module
+from app.core.config import get_settings
 
 
 def test_engine_uses_psycopg3_driver():
@@ -13,10 +14,16 @@ def test_engine_uses_psycopg3_driver():
 
 
 def test_engine_targets_configured_database():
+    # Asserted against the live Settings, not a literal - DB_HOST in
+    # particular legitimately differs between running the backend directly
+    # on a host (backend/.env) and CI (.github/workflows/ci.yml sets it via
+    # env vars), so hardcoding either value here would make the test lie
+    # about what it's actually checking in the other environment.
+    settings = get_settings()
     url = db_module.engine.url
-    assert url.host == "localhost"
-    assert url.port == 5432
-    assert url.database == "ai_resume_analyzer"
+    assert url.host == settings.db_host
+    assert url.port == settings.db_port
+    assert url.database == settings.db_name
 
 
 def test_base_is_declarative_base():
