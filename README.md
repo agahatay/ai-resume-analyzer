@@ -21,16 +21,35 @@ Captured with the e2e fixture resume (fake data: "Alex Rivera") and a demo accou
 
 ## Backend
 
+Requires Python 3.10+ (tested on 3.10.8) and a running PostgreSQL. The quickest option is the compose `postgres` service, which is published on `127.0.0.1:5432` (run from the repo root; it needs the root `.env`, see [Docker](#docker-phase-12)):
+
+```bash
+docker compose up -d postgres
+```
+
+Or point `DB_*` in `backend/.env` at your own PostgreSQL 18 install.
+
 ```bash
 cd backend
 python -m venv .venv
-.venv\Scripts\activate
+.venv\Scripts\activate          # Windows
+# source .venv/bin/activate     # macOS / Linux
 pip install -r requirements.txt
-copy .env.example .env
+copy .env.example .env          # macOS / Linux: cp .env.example .env
+```
+
+Replace the `change_me` placeholders in `backend/.env`:
+
+- `JWT_SECRET_KEY`: generate one with `python -c "import secrets; print(secrets.token_hex(32))"`
+- `DB_PASSWORD`: any strong password. If you use the compose `postgres` service, it must match the `DB_PASSWORD` in the repo-root `.env`.
+
+```bash
 uvicorn app.main:app --reload
 ```
 
 API available at http://localhost:8000, health check at `GET /api/health`.
+
+The first semantic match downloads the sentence-transformers model (`all-MiniLM-L6-v2` by default), so the first match request takes noticeably longer. Later requests use the local model cache.
 
 ## Frontend
 
@@ -42,6 +61,8 @@ npm run dev
 ```
 
 App available at http://localhost:5173.
+
+`npm install` can rewrite `frontend/package-lock.json`. The current lock file is in sync with `package.json`; npm's newer version adds metadata such as `"peer": true` to the `node_modules/picomatch` entry. Use `npm ci` to install exactly what the lock file records without changing it.
 
 ## Authentication (Phase 10)
 
