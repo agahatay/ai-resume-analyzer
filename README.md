@@ -2,6 +2,18 @@
 
 [![CI](https://github.com/agahatay/ai-resume-analyzer/actions/workflows/ci.yml/badge.svg)](https://github.com/agahatay/ai-resume-analyzer/actions/workflows/ci.yml)
 
+## Screenshots
+
+Captured with the e2e fixture resume (fake data: "Alex Rivera") and a demo account.
+
+| Login | Dashboard after upload |
+|---|---|
+| ![Login screen](docs/screenshots/01-login.png) | ![Dashboard after upload](docs/screenshots/02-dashboard-after-upload.png) |
+
+| Analysis result | Analysis history |
+|---|---|
+| ![Analysis result with match scores](docs/screenshots/03-analysis-result.png) | ![Analysis history](docs/screenshots/04-history.png) |
+
 ## Structure
 
 - `backend/` — FastAPI application
