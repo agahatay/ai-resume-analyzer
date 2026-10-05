@@ -163,6 +163,7 @@ Never commit real values for any of these - `.env.prod.example` only has placeho
 - `SEMANTIC_MODEL_NAME` — sentence-transformers model id; changing it changes the semantic-matching layer's behavior, so pin it deliberately rather than relying on the code default drifting.
 - `SEMANTIC_SIMILARITY_THRESHOLD` — see `backend/app/services/semantic_matcher.py` for how this default was chosen; don't change it without re-validating against real resume/JD pairs.
 - `DB_HOST` / `DB_NAME` / `DB_USER` — wherever the production database actually lives; `docker-compose.prod.yml` defaults `DB_HOST` to the Compose service name, which only makes sense if Postgres is co-located in the same Compose project.
+- `DB_SSLMODE` — libpq SSL mode: `disable`, `allow`, `prefer` (default), `require`, `verify-ca`, or `verify-full`. `prefer` uses TLS only if the server offers it. Set `require` for managed Postgres that enforces TLS, so a plaintext connection can't silently be used.
 - `CORS_ORIGINS` — must be the real frontend origin(s), comma-separated; `docker-compose.prod.yml` has no default and refuses to start without it, since a production backend accepting any/no CORS origin is a real exposure.
 - `VITE_API_BASE_URL` — the browser-reachable backend URL, baked into the frontend image at **build time** (see the tagging commands above), not a container-runtime variable — it cannot be changed by editing `docker-compose.prod.yml`'s `environment:`, only by rebuilding the frontend image with a different `--build-arg`.
 

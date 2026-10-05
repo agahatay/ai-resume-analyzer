@@ -1,4 +1,5 @@
 from functools import lru_cache
+from typing import Literal
 
 from pydantic import SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -35,6 +36,11 @@ class Settings(BaseSettings):
     db_name: str = "ai_resume_analyzer"
     db_user: str = "postgres"
     db_password: SecretStr = SecretStr("")
+    # libpq sslmode: disable, allow, prefer, require, verify-ca, verify-full.
+    # "prefer" (libpq's default) uses SSL when the server offers it. Managed
+    # Postgres that enforces TLS should set "require" - it is deliberately not
+    # hardcoded so local and Compose setups keep working unchanged.
+    db_sslmode: Literal["disable", "allow", "prefer", "require", "verify-ca", "verify-full"] = "prefer"
 
     # JWT auth settings (Phase 10A). jwt_secret_key is a SecretStr for the
     # same reason db_password is: it must never appear in plain form in
@@ -56,7 +62,7 @@ class Settings(BaseSettings):
         password = self.db_password.get_secret_value()
         return (
             f"postgresql+psycopg://{self.db_user}:{password}"
-            f"@{self.db_host}:{self.db_port}/{self.db_name}"
+            f"@{self.db_host}:{self.db_port}/{self.db_name}?sslmode={self.db_sslmode}"
         )
 
 
