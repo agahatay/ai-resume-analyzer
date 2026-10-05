@@ -29,6 +29,7 @@ positives, since a wrong ✓ is more misleading to a reader than a real match
 merely showing a lower similarity number they can still see.
 """
 
+import logging
 import threading
 
 import numpy as np
@@ -48,6 +49,7 @@ _MODEL_CACHE: dict[str, SentenceTransformer] = {}
 # once per model name (same guarantee as before, now actually enforced
 # under concurrency) instead of racing to load it twice.
 _MODEL_CACHE_LOCK = threading.Lock()
+logger = logging.getLogger(__name__)
 
 
 def _get_model(model_name: str) -> SentenceTransformer:
@@ -61,6 +63,18 @@ def _get_model(model_name: str) -> SentenceTransformer:
         if model_name not in _MODEL_CACHE:
             _MODEL_CACHE[model_name] = SentenceTransformer(model_name)
     return _MODEL_CACHE[model_name]
+
+
+def preload_model() -> None:
+    """Load the configured model ahead of the first request, meant to run in a
+    background thread at app startup. A request that arrives while this is
+    still loading blocks on _MODEL_CACHE_LOCK and reuses that same load, so
+    the model is never loaded twice. If the load fails, it is logged here and
+    the next match request retries it."""
+    try:
+        _get_model(get_settings().semantic_model_name)
+    except Exception:
+        logger.exception("Background preload of the semantic model failed; the next match request will retry it")
 
 
 def _dedupe_preserve(items: list[str]) -> list[str]:
