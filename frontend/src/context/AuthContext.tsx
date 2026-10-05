@@ -1,30 +1,13 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { getCurrentUser, login as loginRequest, registerUser as registerRequest } from "../services/authService";
 import type { UserResponse } from "../services/authService";
 import { getAccessToken, setAccessToken, subscribeToUnauthorized } from "../services/authToken";
+import { AuthContext } from "./authContextValue";
+import type { AuthContextValue, AuthStatus } from "./authContextValue";
 
-// Phase 10C: single source of truth for "is anyone logged in, and who".
-// Every other part of the app (AuthGate, the header, protected API
-// callers) reads/drives auth state through useAuth() instead of touching
-// authToken.ts or authService.ts directly.
-export type AuthStatus = "loading" | "authenticated" | "unauthenticated";
-
-interface AuthContextValue {
-  status: AuthStatus;
-  isAuthenticated: boolean;
-  user: UserResponse | null;
-  /** True only when a previously-valid session just died (expired token,
-   *  deactivated account, etc.) - never true for the initial, never-logged-in
-   *  state. Drives the "Your session has expired" message. */
-  sessionExpired: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string) => Promise<void>;
-  logout: () => void;
-  clearSessionExpired: () => void;
-}
-
-const AuthContext = createContext<AuthContextValue | null>(null);
+// Phase 10C: AuthProvider owns the auth state. The context object and the
+// useAuth() hook live in authContextValue.ts and useAuth.ts.
 
 interface AuthProviderProps {
   children: ReactNode;
@@ -143,12 +126,4 @@ export function AuthProvider({ children }: AuthProviderProps) {
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-}
-
-export function useAuth(): AuthContextValue {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error("useAuth must be used within an AuthProvider");
-  }
-  return context;
 }

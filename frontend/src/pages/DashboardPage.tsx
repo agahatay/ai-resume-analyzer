@@ -2,7 +2,7 @@ import { useState } from "react";
 import AppHeader from "../components/layout/AppHeader";
 import NavBar from "../components/layout/NavBar";
 import type { AppView } from "../components/layout/NavBar";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../context/useAuth";
 import AnalysisHistory from "../components/history/AnalysisHistory";
 import AnalysisDetails from "../components/history/AnalysisDetails";
 import "../components/dashboard/dashboard.css";

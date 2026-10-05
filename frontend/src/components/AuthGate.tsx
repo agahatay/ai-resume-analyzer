@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { FormEvent, ReactNode } from "react";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../context/useAuth";
 import Card from "./ui/Card";
 import ErrorBanner from "./ui/ErrorBanner";
 import Spinner from "./ui/Spinner";

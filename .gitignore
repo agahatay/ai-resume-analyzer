@@ -26,6 +26,7 @@ frontend/.vite/
 *.tsbuildinfo
 
 # --- Playwright ---
+test-results/
 frontend/test-results/
 frontend/playwright-report/
 frontend/blob-report/
