@@ -42,10 +42,21 @@ RUN chmod +x docker-entrypoint.sh && chown -R appuser:appuser /app /home/appuser
 
 USER appuser
 
+# Bake the default semantic-matching model into the image so the first match
+# after a cold start doesn't have to reach Hugging Face. It runs as appuser so
+# the files are owned by the user that reads them at runtime. HF_HOME is set
+# explicitly at the top of this file, so the download lands in the same cache
+# path the app reads from.
+ARG SEMANTIC_MODEL_NAME=sentence-transformers/all-MiniLM-L6-v2
+RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('${SEMANTIC_MODEL_NAME}')"
+
 EXPOSE 8000
 
 HEALTHCHECK --interval=10s --timeout=5s --start-period=15s --retries=5 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')" || exit 1
 
 ENTRYPOINT ["./docker-entrypoint.sh"]
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Shell form so ${PORT} is expanded: hosts like Render inject $PORT and expect the
+# app to bind to it. Locally PORT is unset and the default keeps 8000. exec keeps
+# uvicorn as PID 1 so signals reach it directly.
+CMD ["sh", "-c", "exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
