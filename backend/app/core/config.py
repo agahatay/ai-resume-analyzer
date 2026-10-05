@@ -1,5 +1,6 @@
 from functools import lru_cache
 from typing import Literal
+from urllib.parse import quote
 
 from pydantic import SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -59,9 +60,13 @@ class Settings(BaseSettings):
     @property
     def database_url(self) -> str:
         """SQLAlchemy 2.x connection URL using the psycopg 3 driver."""
-        password = self.db_password.get_secret_value()
+        # Percent-encode the credentials so reserved characters (@ : / # ?) and
+        # spaces can't break URL parsing. safe="" encodes everything reserved,
+        # which quote_plus would not do for spaces.
+        user = quote(self.db_user, safe="")
+        password = quote(self.db_password.get_secret_value(), safe="")
         return (
-            f"postgresql+psycopg://{self.db_user}:{password}"
+            f"postgresql+psycopg://{user}:{password}"
             f"@{self.db_host}:{self.db_port}/{self.db_name}?sslmode={self.db_sslmode}"
         )
 

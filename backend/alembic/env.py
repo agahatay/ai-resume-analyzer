@@ -18,7 +18,10 @@ config = context.config
 
 # Build the DB URL from the app's own Settings (backend/.env) rather than
 # from alembic.ini, so the password is never written to a checked-in file.
-config.set_main_option("sqlalchemy.url", get_settings().database_url)
+# Alembic's Config reads this value through ConfigParser, where a bare "%" is
+# interpolation syntax. The URL is percent-encoded (see Settings.database_url),
+# so every "%" must be doubled to survive that round trip.
+config.set_main_option("sqlalchemy.url", get_settings().database_url.replace("%", "%%"))
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
