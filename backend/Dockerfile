@@ -16,6 +16,13 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 # re-downloading every time.
 RUN groupadd --system appuser && useradd --system --gid appuser --create-home appuser
 
+# torch is installed first from the CPU-only wheel index. sentence-transformers
+# pulls torch in transitively, and a plain "pip install" resolves to the default
+# Linux build, which drags in several GB of CUDA libraries the container never
+# uses. Installing torch here first means the requirements install below sees
+# it as already satisfied and skips the CUDA build.
+RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu
+
 # Installed as its own layer, keyed only on requirements.txt, so editing
 # application code doesn't invalidate the (slow, ~GB-sized) dependency
 # install layer on rebuild.
