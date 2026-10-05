@@ -31,6 +31,16 @@ npm run dev
 
 App available at http://localhost:5173.
 
+## Authentication (Phase 10)
+
+Resumes, job descriptions and analyses belong to a user. Every endpoint that reads or writes them requires a JWT bearer token, and a user can only ever see or change their own data.
+
+- **10A - JWT foundation.** Argon2id password hashing (`backend/app/core/security.py`), HS256 access tokens signed with `JWT_SECRET_KEY`, a `users` table, and `POST /api/auth/register`, `POST /api/auth/login`, and `GET /api/auth/me`. `GET /api/auth/me` is backed by the shared `get_current_user` dependency.
+- **10B - ownership and route protection.** Resume, job description and analysis endpoints require a bearer token. Ownership comes from the verified token subject, never from a request body. A resource owned by another user returns the same 404 as a nonexistent one, so ids cannot be probed. `ResumeAnalysis` has no `user_id`; its owner is `analysis.resume.user_id`.
+- **10C - frontend session handling.** `AuthProvider` (`frontend/src/context/AuthContext.tsx`) is the single source of auth state, read through `useAuth()`. On startup and refresh, a stored token is verified with `GET /api/auth/me` before it is trusted. Logout, a stored token that fails verification, and a 401 in the middle of a session all return to the login screen; the last one shows a "session expired" message.
+
+**Token storage (known limitation).** The access token is kept in `localStorage` under `ai-resume-analyzer.access_token`, so a page refresh does not log the user out. Any JavaScript running on the origin can read it, which means any XSS bug would expose it. This is an accepted trade-off for the current stage, not a production design. For production, use **HttpOnly cookies with a short-lived access token and a rotating refresh token**: script never sees the token, and refresh tokens can be revoked server-side. That change touches the backend (cookie issuing, refresh and revocation endpoints) and the frontend (drop the `localStorage` token), and cookie-authenticated requests then need CSRF protection.
+
 ## Docker (Phase 12)
 
 Runs the whole stack - PostgreSQL, backend, frontend - via Docker Compose. Requires Docker Desktop.
